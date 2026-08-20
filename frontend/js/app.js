@@ -244,9 +244,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     activeJobId = queuedJobs[0].id;
                 } else if (activeJobId) {
                     targetJob = jobs.find(j => j.id === activeJobId);
-                } else if (jobs.length > 0) {
-                    targetJob = jobs[0];
-                    activeJobId = jobs[0].id;
                 }
 
                 if (targetJob) {

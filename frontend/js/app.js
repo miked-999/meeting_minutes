@@ -6,11 +6,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let pollingInterval = null;
     let allJobs = [];
 
-    // Session ID Initialization for Anonymous Browser Privacy (sessionStorage isolates each window/tab)
-    let appSessionId = sessionStorage.getItem('meeting_transcribe_session_id');
+    // Session ID Initialization for Anonymous Browser Privacy (localStorage per browser)
+    let appSessionId = localStorage.getItem('meeting_transcribe_session_id');
     if (!appSessionId) {
         appSessionId = 'sess_' + (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36));
-        sessionStorage.setItem('meeting_transcribe_session_id', appSessionId);
+        localStorage.setItem('meeting_transcribe_session_id', appSessionId);
     }
 
     function fetchWithSession(url, options = {}) {

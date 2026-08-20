@@ -81,7 +81,7 @@ def run_transcription(
 
         if progress_callback and total_duration > 0:
             current_progress = min(88.0, (seg.end / total_duration) * 100.0)
-            progress_callback(current_progress)
+            progress_callback(current_progress, segments)
 
     # Perform Speaker Diarization
     if segments:

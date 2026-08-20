@@ -51,10 +51,12 @@ def process_job(job_id: str):
         job.current_stage = f"Transcribing with Whisper ({job.model_size})"
         db.commit()
 
-        def update_progress(proc_percent: float):
-            # Scale transcription progress from 20% to 90%
-            scaled_progress = 20.0 + (proc_percent * 0.7)
-            job.progress = min(90.0, round(scaled_progress, 1))
+        def update_progress(proc_percent: float, current_segments: list = None):
+            # Scale transcription progress from 20% to 88%
+            scaled_progress = 20.0 + (proc_percent * 0.68)
+            job.progress = min(88.0, round(scaled_progress, 1))
+            if current_segments:
+                job.transcript_json = json.dumps(current_segments)
             db.commit()
 
         segments, full_text, detected_lang = run_transcription(

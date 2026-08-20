@@ -6,6 +6,23 @@ document.addEventListener('DOMContentLoaded', () => {
     let pollingInterval = null;
     let allJobs = [];
 
+    // Session ID Initialization for Anonymous Browser Privacy
+    let appSessionId = localStorage.getItem('meeting_transcribe_session_id');
+    if (!appSessionId) {
+        appSessionId = 'sess_' + (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36));
+        localStorage.setItem('meeting_transcribe_session_id', appSessionId);
+    }
+
+    function fetchWithSession(url, options = {}) {
+        options.headers = options.headers || {};
+        if (options.headers instanceof Headers) {
+            options.headers.set('X-Session-ID', appSessionId);
+        } else {
+            options.headers['X-Session-ID'] = appSessionId;
+        }
+        return fetch(url, options);
+    }
+
     // DOM Elements
     const tabBtns = document.querySelectorAll('.tab-btn');
     const tabContents = document.querySelectorAll('.tab-content');
@@ -349,7 +366,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 6. Load History List
     async function loadHistory() {
         try {
-            const res = await fetch('/api/jobs');
+            const res = await fetchWithSession('/api/jobs');
             if (!res.ok) return;
             allJobs = await res.json();
             historyCountPill.textContent = allJobs.length;
@@ -547,7 +564,7 @@ document.addEventListener('DOMContentLoaded', () => {
             btnElement.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Deleting...`;
         }
         try {
-            const res = await fetch(`/api/jobs/${jobId}`, { method: 'DELETE' });
+            const res = await fetchWithSession(`/api/jobs/${jobId}`, { method: 'DELETE' });
             if (res.ok) {
                 if (activeJobId === jobId) {
                     activeJobId = null;

@@ -29,6 +29,9 @@ class TranscriptionJob(Base):
     docx_path = Column(String(500), nullable=True)
     pdf_path = Column(String(500), nullable=True)
     
+    # Session tracking for anonymous multi-user privacy
+    session_id = Column(String(64), nullable=True, index=True)
+
     error_message = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime, nullable=True)
@@ -63,6 +66,7 @@ class TranscriptionJob(Base):
             "progress": round(self.progress, 1),
             "current_stage": current_stage_display,
             "queue_position": queue_position,
+            "session_id": self.session_id,
             "model_size": self.model_size,
             "language": self.language or "Auto",
             "enable_diarization": self.enable_diarization,

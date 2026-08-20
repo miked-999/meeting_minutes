@@ -238,13 +238,19 @@
                             <span class="toggle-label">Include Timestamps</span>
                         </label>
                         <div class="search-box">
-                            <i class="fa-solid fa-magnifying-glass"></i>
-                            <input type="text" id="history-search" placeholder="Search transcripts...">
+                            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                            <input type="text" id="history-search" class="form-input search-input" placeholder="Search transcripts...">
                         </div>
                         <button id="refresh-history-btn" class="btn btn-secondary" title="Refresh List">
                             <i class="fa-solid fa-rotate-right"></i> Refresh
                         </button>
                     </div>
+                </div>
+
+                <!-- Discrete Session Retention Warning Banner -->
+                <div class="session-warning-banner">
+                    <i class="fa-solid fa-circle-info warning-icon"></i>
+                    <span><strong>Session Notice:</strong> Results are linked to your browser session. Please download the files you need promptly, as past results may not be retained permanently.</span>
                 </div>
 
                 <!-- History Table / Card Container -->

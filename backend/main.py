@@ -60,12 +60,21 @@ def auth_status(current_user: dict = Depends(get_current_user)):
         "user": current_user
     }
 
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends, Header, Request
+
+def extract_session_id(request: Request, x_session_id: Optional[str] = Header(None)) -> Optional[str]:
+    if x_session_id:
+        return x_session_id.strip()
+    return request.headers.get("x-session-id") or request.cookies.get("session_id") or request.query_params.get("session_id")
+
 @app.post("/api/transcribe")
 async def create_transcription_job(
+    request: Request,
     file: UploadFile = File(...),
     model_size: str = Form("small"),
     language: Optional[str] = Form("en"),
     enable_diarization: str = Form("false"),
+    x_session_id: Optional[str] = Header(None),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -93,6 +102,7 @@ async def create_transcription_job(
             file_size += len(chunk)
 
     is_diarized = str(enable_diarization).lower().strip() in ["true", "1", "on", "yes"]
+    session_id = extract_session_id(request, x_session_id)
 
     # Create job in database
     job = TranscriptionJob(
@@ -106,6 +116,7 @@ async def create_transcription_job(
         model_size=model_size,
         language=language if language and language.lower() != "auto" else "en",
         enable_diarization=is_diarized,
+        session_id=session_id
     )
     db.add(job)
     db.commit()
@@ -121,7 +132,8 @@ async def create_transcription_job(
             details={
                 "file_size": file_size,
                 "model_size": model_size,
-                "enable_diarization": is_diarized
+                "enable_diarization": is_diarized,
+                "session_id": session_id
             },
             db_session=db
         )
@@ -134,9 +146,21 @@ async def create_transcription_job(
     return JSONResponse(status_code=201, content=job.to_dict(db_session=db))
 
 @app.get("/api/jobs")
-def list_jobs(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    """List all transcription jobs ordered by creation time descending."""
-    jobs = db.query(TranscriptionJob).order_by(TranscriptionJob.created_at.desc()).all()
+def list_jobs(
+    request: Request,
+    x_session_id: Optional[str] = Header(None),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """List transcription jobs filtered by session_id if provided."""
+    session_id = extract_session_id(request, x_session_id)
+    query = db.query(TranscriptionJob)
+    if session_id:
+        # Filter jobs by session_id or unassigned legacy jobs
+        query = query.filter(
+            (TranscriptionJob.session_id == session_id) | (TranscriptionJob.session_id.is_(None))
+        )
+    jobs = query.order_by(TranscriptionJob.created_at.desc()).all()
     return [j.to_dict(db_session=db) for j in jobs]
 
 class RenameJobRequest(BaseModel):

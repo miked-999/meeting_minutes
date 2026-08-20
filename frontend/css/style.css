@@ -902,3 +902,28 @@ input:checked + .slider:before {
     font-size: 11px;
     color: var(--text-muted);
 }
+
+/* Discrete Session Retention Warning Banner */
+.session-warning-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    margin: 12px 0 16px 0;
+    background: rgba(245, 158, 11, 0.08);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.session-warning-banner .warning-icon {
+    color: #f59e0b;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.session-warning-banner strong {
+    color: var(--text-primary);
+}

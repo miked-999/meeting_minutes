@@ -218,17 +218,28 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 5. Global Polling Loop: Prioritizes Active Processing File and Updates Queue Drawer
+    // 5. Global Polling Loop: Prioritizes Active Processing File and Updates Queue Drawer & History Counter
     function startGlobalJobPolling() {
         if (pollingInterval) clearInterval(pollingInterval);
 
         const pollFunc = async () => {
             try {
-                const res = await fetch('/api/jobs');
+                const res = await fetchWithSession('/api/jobs');
                 if (!res.ok) return;
 
                 const jobs = await res.json();
                 allJobs = jobs;
+
+                // Live-update History Count Badge for current session
+                if (historyCountPill) {
+                    historyCountPill.textContent = jobs.length;
+                }
+
+                // If user is currently viewing the History tab, refresh the list live
+                const historyTab = document.getElementById('history-tab');
+                if (historyTab && historyTab.classList.contains('active')) {
+                    renderHistoryItems(jobs);
+                }
 
                 const processingJob = jobs.find(j => j.status === 'CONVERTING' || j.status === 'TRANSCRIBING');
                 const queuedJobs = jobs.filter(j => j.status === 'QUEUED');

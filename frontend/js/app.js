@@ -168,8 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const job = await res.json();
-            activeJobId = job.id;
-
+            
             // Reset upload form
             removeFileBtn.click();
             startTranscribeBtn.innerHTML = `<i class="fa-solid fa-bolt"></i> Start Local Transcription`;
@@ -177,7 +176,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Display active job & start polling
             noActiveJob.classList.add('hidden');
             activeJobContainer.classList.remove('hidden');
-            startPollingActiveJob(job.id);
+            startGlobalJobPolling();
 
         } catch (e) {
             alert(`Network error during upload: ${e.message}`);
@@ -186,23 +185,79 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 5. Polling Active Job Status
-    function startPollingActiveJob(jobId) {
+    // Expandable Queue Drawer Toggle Listener
+    const queueDrawer = document.getElementById('queue-drawer');
+    const queueToggleBtn = document.getElementById('queue-toggle-btn');
+    const queueCount = document.getElementById('queue-count');
+    const queueChevron = document.getElementById('queue-chevron');
+    const queueListContainer = document.getElementById('queue-list-container');
+
+    if (queueToggleBtn) {
+        queueToggleBtn.addEventListener('click', () => {
+            queueListContainer.classList.toggle('hidden');
+            queueChevron.className = queueListContainer.classList.contains('hidden') 
+                ? 'fa-solid fa-chevron-down' 
+                : 'fa-solid fa-chevron-up';
+        });
+    }
+
+    // 5. Global Polling Loop: Prioritizes Active Processing File and Updates Queue Drawer
+    function startGlobalJobPolling() {
         if (pollingInterval) clearInterval(pollingInterval);
 
         const pollFunc = async () => {
             try {
-                const res = await fetch(`/api/jobs/${jobId}`);
+                const res = await fetch('/api/jobs');
                 if (!res.ok) return;
 
-                const job = await res.json();
-                updateActiveJobUI(job);
+                const jobs = await res.json();
+                allJobs = jobs;
 
-                if (job.status === 'COMPLETED' || job.status === 'FAILED') {
-                    clearInterval(pollingInterval);
-                    pollingInterval = null;
-                    loadHistory(); // Refresh background count
+                const processingJob = jobs.find(j => j.status === 'CONVERTING' || j.status === 'TRANSCRIBING');
+                const queuedJobs = jobs.filter(j => j.status === 'QUEUED');
+
+                // Render Queue Drawer
+                if (queuedJobs.length > 0) {
+                    queueDrawer.classList.remove('hidden');
+                    queueCount.textContent = queuedJobs.length;
+                    
+                    queueListContainer.innerHTML = queuedJobs.map((qj, idx) => `
+                        <div class="queue-item">
+                            <span class="queue-item-name"><i class="fa-solid fa-file-audio"></i> ${qj.original_filename}</span>
+                            <div class="queue-item-meta">
+                                <span>${formatBytes(qj.file_size)}</span>
+                                <span class="badge-mini">Position ${qj.queue_position || (idx + 1)}</span>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    queueDrawer.classList.add('hidden');
                 }
+
+                // Determine active job to display in main monitor card
+                let targetJob = null;
+                if (processingJob) {
+                    targetJob = processingJob;
+                    activeJobId = processingJob.id;
+                } else if (queuedJobs.length > 0) {
+                    targetJob = queuedJobs[0];
+                    activeJobId = queuedJobs[0].id;
+                } else if (activeJobId) {
+                    targetJob = jobs.find(j => j.id === activeJobId);
+                } else if (jobs.length > 0) {
+                    targetJob = jobs[0];
+                    activeJobId = jobs[0].id;
+                }
+
+                if (targetJob) {
+                    noActiveJob.classList.add('hidden');
+                    activeJobContainer.classList.remove('hidden');
+                    updateActiveJobUI(targetJob);
+                } else {
+                    noActiveJob.classList.remove('hidden');
+                    activeJobContainer.classList.add('hidden');
+                }
+
             } catch (e) {
                 console.error("Polling error:", e);
             }
@@ -211,6 +266,9 @@ document.addEventListener('DOMContentLoaded', () => {
         pollFunc(); // immediate call
         pollingInterval = setInterval(pollFunc, 1500);
     }
+
+    // Start global polling on initial app load
+    startGlobalJobPolling();
 
     const activeTimestampsToggle = document.getElementById('active-timestamps-toggle');
     const historyTimestampsToggle = document.getElementById('history-timestamps-toggle');

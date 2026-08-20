@@ -125,6 +125,19 @@
                         <p class="card-desc">Real-time asynchronous job status & progress</p>
                     </div>
 
+                    <!-- Expandable Queue Drawer (Shown when items are queued) -->
+                    <div id="queue-drawer" class="queue-drawer hidden">
+                        <button id="queue-toggle-btn" class="queue-toggle-btn" type="button">
+                            <span class="queue-toggle-title">
+                                <i class="fa-solid fa-list-ol"></i> Up Next in Queue (<strong id="queue-count">0</strong>)
+                            </span>
+                            <i id="queue-chevron" class="fa-solid fa-chevron-down"></i>
+                        </button>
+                        <div id="queue-list-container" class="queue-list-content hidden">
+                            <!-- Dynamically populated list of queued jobs -->
+                        </div>
+                    </div>
+
                     <!-- Empty State when no active job -->
                     <div id="no-active-job" class="empty-state">
                         <i class="fa-solid fa-compact-disc spin-slow"></i>

@@ -171,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('enable_diarization', dToggle && dToggle.checked ? 'true' : 'false');
 
         try {
-            const res = await fetch('/api/transcribe', {
+            const res = await fetchWithSession('/api/transcribe', {
                 method: 'POST',
                 body: formData
             });
@@ -329,7 +329,22 @@ document.addEventListener('DOMContentLoaded', () => {
         stepTranscribe.className = job.progress >= 90 ? 'step-item step-done' : (job.progress >= 15 ? 'step-item step-active' : 'step-item');
         stepExport.className = job.status === 'COMPLETED' ? 'step-item step-done' : (job.progress >= 90 ? 'step-item step-active' : 'step-item');
 
+        // Check session ownership for privacy
+        const isOwnSession = !job.session_id || job.session_id === appSessionId;
+
         // Update Live Transcript Stream
+        if (!isOwnSession) {
+            segmentCountEl.textContent = `Private`;
+            liveTranscriptText.innerHTML = `
+                <div style="padding: 16px 12px; text-align: center;">
+                    <i class="fa-solid fa-lock" style="font-size: 22px; color: var(--accent-indigo); margin-bottom: 6px;"></i>
+                    <p style="font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 2px;">Live Transcript Stream Hidden</p>
+                    <p style="font-size: 11px; color: var(--text-muted);">This file is currently processing on the server from another session. Title & progress are visible above.</p>
+                </div>`;
+            activeDownloadsBar.classList.add('hidden');
+            return;
+        }
+
         if (job.segments && job.segments.length > 0) {
             segmentCountEl.textContent = `${job.segments.length} Segments`;
             liveTranscriptText.innerHTML = job.segments.map(s => {

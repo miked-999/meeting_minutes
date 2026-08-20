@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const removeFileBtn = document.getElementById('remove-file-btn');
 
     const modelSelect = document.getElementById('model-select');
+    const diarizationToggle = document.getElementById('diarization-toggle');
     const startTranscribeBtn = document.getElementById('start-transcribe-btn');
 
     const noActiveJob = document.getElementById('no-active-job');
@@ -149,7 +150,8 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('file', selectedFile);
         formData.append('model_size', modelSelect.value);
         formData.append('language', 'en');
-        formData.append('enable_diarization', diarizationToggle && diarizationToggle.checked ? 'true' : 'false');
+        const dToggle = document.getElementById('diarization-toggle');
+        formData.append('enable_diarization', dToggle && dToggle.checked ? 'true' : 'false');
 
         try {
             const res = await fetch('/api/transcribe', {

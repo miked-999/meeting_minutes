@@ -61,3 +61,30 @@ class TranscriptionJob(Base):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "completed_at": self.completed_at.isoformat() if self.completed_at else None,
         }
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    event_type = Column(String(50), nullable=False)
+    job_id = Column(String(36), nullable=True)
+    filename = Column(String(255), nullable=True)
+    details_json = Column(Text, nullable=True)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        import json
+        details = {}
+        if self.details_json:
+            try:
+                details = json.loads(self.details_json)
+            except Exception:
+                details = {}
+        return {
+            "id": self.id,
+            "event_type": self.event_type,
+            "job_id": self.job_id,
+            "filename": self.filename,
+            "details": details,
+            "timestamp": self.timestamp.isoformat() + "Z" if self.timestamp else None
+        }

@@ -99,6 +99,23 @@ async def create_transcription_job(
     db.commit()
     db.refresh(job)
 
+    # Log audit event
+    try:
+        from backend.audit_logger import log_audit_event
+        log_audit_event(
+            event_type="JOB_CREATED",
+            job_id=job.id,
+            filename=job.original_filename,
+            details={
+                "file_size": file_size,
+                "model_size": model_size,
+                "enable_diarization": is_diarized
+            },
+            db_session=db
+        )
+    except Exception as audit_err:
+        logger.warning(f"Audit log failed: {audit_err}")
+
     # Submit to background queue worker
     queue_transcription_job(job.id)
 
@@ -129,9 +146,23 @@ def rename_job(
     if not new_title:
         raise HTTPException(status_code=400, detail="Title cannot be empty")
     
+    old_title = job.original_filename
     job.original_filename = new_title
     db.commit()
     db.refresh(job)
+
+    try:
+        from backend.audit_logger import log_audit_event
+        log_audit_event(
+            event_type="JOB_RENAMED",
+            job_id=job.id,
+            filename=new_title,
+            details={"old_title": old_title, "new_title": new_title},
+            db_session=db
+        )
+    except Exception:
+        pass
+
     return job.to_dict()
 
 @app.get("/api/jobs/{job_id}")
@@ -175,29 +206,101 @@ def download_export(job_id: str, fmt: str, timestamps: bool = False, db: Session
         elif fmt == "srt":
             generate_srt(job, file_path)
 
-    download_name = f"{Path(job.original_filename).stem}_transcript.{fmt}"
-    return FileResponse(path=file_path, filename=download_name, media_type="application/octet-stream")
+    media_types = {
+        "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "pdf": "application/pdf",
+        "txt": "text/plain",
+        "srt": "text/plain"
+    }
+
+    export_name = f"{Path(job.original_filename).stem}_transcript.{fmt}"
+
+    try:
+        from backend.audit_logger import log_audit_event
+        log_audit_event(
+            event_type="DOCUMENT_DOWNLOADED",
+            job_id=job.id,
+            filename=job.original_filename,
+            details={"format": fmt, "timestamps": timestamps},
+            db_session=db
+        )
+    except Exception:
+        pass
+
+    return FileResponse(
+        path=file_path,
+        media_type=media_types[fmt],
+        filename=export_name
+    )
 
 @app.delete("/api/jobs/{job_id}")
 def delete_job(job_id: str, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    """Delete a transcription job and its stored files."""
+    """Deletes a transcription job and all associated export files."""
     job = db.query(TranscriptionJob).filter(TranscriptionJob.id == job_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    # Cleanup files
+    job_title = job.original_filename
+
+    # Delete export files
+    for fmt_suffix in ["", "_ts"]:
+        for ext in ["docx", "pdf", "txt"]:
+            export_file = EXPORT_DIR / f"transcript_{job.id}{fmt_suffix}.{ext}"
+            if export_file.exists():
+                try:
+                    export_file.unlink()
+                except Exception:
+                    pass
+
+    srt_file = EXPORT_DIR / f"transcript_{job.id}.srt"
+    if srt_file.exists():
+        try:
+            srt_file.unlink()
+        except Exception:
+            pass
+            
+    # Cleanup source files
     try:
         (UPLOAD_DIR / job.stored_filename).unlink(missing_ok=True)
         if job.converted_filename:
             (BASE_DIR / "converted" / job.converted_filename).unlink(missing_ok=True)
-        for fmt in ["docx", "pdf", "txt", "srt"]:
-            (EXPORT_DIR / f"transcript_{job.id}.{fmt}").unlink(missing_ok=True)
     except Exception as e:
-        logger.warning(f"Error removing files for job {job_id}: {e}")
+        logger.warning(f"Error removing source files for job {job_id}: {e}")
 
     db.delete(job)
     db.commit()
+
+    try:
+        from backend.audit_logger import log_audit_event
+        log_audit_event(
+            event_type="JOB_DELETED",
+            job_id=job_id,
+            filename=job_title,
+            db_session=db
+        )
+    except Exception:
+        pass
+
     return {"message": "Job deleted successfully"}
+
+@app.get("/api/audit-logs")
+def get_audit_logs(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    """Retrieves usage audit log entries and system metrics."""
+    from backend.models import AuditLog
+    logs = db.query(AuditLog).order_by(AuditLog.timestamp.desc()).limit(200).all()
+    
+    total_jobs = db.query(TranscriptionJob).count()
+    completed_jobs = db.query(TranscriptionJob).filter(TranscriptionJob.status == "COMPLETED").count()
+    failed_jobs = db.query(TranscriptionJob).filter(TranscriptionJob.status == "FAILED").count()
+
+    return {
+        "summary": {
+            "total_jobs": total_jobs,
+            "completed_jobs": completed_jobs,
+            "failed_jobs": failed_jobs
+        },
+        "logs": [l.to_dict() for l in logs]
+    }
 
 # Serve static frontend UI
 frontend_dir = BASE_DIR / "frontend"

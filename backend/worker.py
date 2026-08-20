@@ -98,6 +98,29 @@ def process_job(job_id: str):
 
         logger.info(f"Job {job.id} completed successfully!")
 
+        try:
+            from backend.audit_logger import log_audit_event
+            spk_set = set()
+            for s in segments:
+                if s.get("speaker"):
+                    spk_set.add(s["speaker"])
+
+            log_audit_event(
+                event_type="JOB_COMPLETED",
+                job_id=job.id,
+                filename=job.original_filename,
+                details={
+                    "duration_seconds": duration,
+                    "model_size": job.model_size,
+                    "enable_diarization": job.enable_diarization,
+                    "segment_count": len(segments),
+                    "speaker_count": len(spk_set) if spk_set else (1 if job.enable_diarization else 0)
+                },
+                db_session=db
+            )
+        except Exception as audit_err:
+            logger.warning(f"Audit log failed in worker: {audit_err}")
+
     except Exception as e:
         err_msg = f"{str(e)}\n{traceback.format_exc()}"
         logger.error(f"Error processing job {job_id}: {err_msg}")
@@ -105,6 +128,18 @@ def process_job(job_id: str):
         job.current_stage = "Failed during processing"
         job.error_message = str(e)
         db.commit()
+
+        try:
+            from backend.audit_logger import log_audit_event
+            log_audit_event(
+                event_type="JOB_FAILED",
+                job_id=job.id,
+                filename=job.original_filename if 'job' in locals() and job else "Unknown",
+                details={"error": str(e)},
+                db_session=db
+            )
+        except Exception:
+            pass
     finally:
         # Auto-delete uploaded raw media file and converted WAV to free disk space & preserve privacy
         try:

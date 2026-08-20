@@ -86,8 +86,11 @@ def run_transcription(
     # Perform Speaker Diarization ONLY if requested by user
     if enable_diarization and segments:
         try:
+            logger.info(f"Running Speaker Diarization on {len(segments)} segments...")
             from backend.diarizer import perform_diarization
             segments = perform_diarization(wav_path, segments)
+            if progress_callback:
+                progress_callback(90.0, segments)
         except Exception as e:
             logger.warning(f"Diarization error: {e}")
 

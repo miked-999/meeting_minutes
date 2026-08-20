@@ -149,6 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('file', selectedFile);
         formData.append('model_size', modelSelect.value);
         formData.append('language', 'en');
+        formData.append('enable_diarization', diarizationToggle && diarizationToggle.checked ? 'true' : 'false');
 
         try {
             const res = await fetch('/api/transcribe', {

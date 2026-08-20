@@ -111,48 +111,49 @@ def perform_diarization(wav_path: Path, segments: list) -> list:
             return segments
 
         embeddings = np.array(embeddings)
+        n_samples = len(embeddings)
 
-        if len(embeddings) < 2:
+        if n_samples < 2:
             for seg in segments:
                 seg["speaker"] = "Speaker 1"
             return segments
 
-        # Determine optimal number of speakers using cosine distance clustering
-        max_speakers = min(20, len(embeddings))
+        max_speakers = min(20, n_samples)
         best_k = 1
         best_score = -1.0
-        best_labels = np.zeros(len(embeddings), dtype=int)
+        best_labels = np.zeros(n_samples, dtype=int)
 
-        # Test distance threshold based clustering (cosine distance threshold = 0.36)
-        clustering_thresh = AgglomerativeClustering(
-            n_clusters=None,
-            distance_threshold=0.36,
-            metric='cosine',
-            linkage='average'
-        )
-        thresh_labels = clustering_thresh.fit_predict(embeddings)
-        n_thresh_clusters = len(set(thresh_labels))
+        # 1. Test Adaptive Cosine Distance Thresholds
+        thresholds_to_test = [0.20, 0.25, 0.28, 0.32, 0.36, 0.40]
+        for thresh in thresholds_to_test:
+            clustering = AgglomerativeClustering(
+                n_clusters=None,
+                distance_threshold=thresh,
+                metric='cosine',
+                linkage='average'
+            )
+            labels = clustering.fit_predict(embeddings)
+            k = len(set(labels))
+            if 2 <= k <= max_speakers:
+                score = silhouette_score(embeddings, labels, metric='cosine')
+                logger.info(f"Tested distance_threshold={thresh} -> identified {k} clusters (silhouette score: {round(score, 3)})")
+                if score > best_score:
+                    best_score = score
+                    best_k = k
+                    best_labels = labels
 
-        if 2 <= n_thresh_clusters <= max_speakers:
-            score = silhouette_score(embeddings, thresh_labels, metric='cosine')
-            if score > 0.02:
-                best_k = n_thresh_clusters
-                best_score = score
-                best_labels = thresh_labels
+        # 2. Test Fixed k Values in Range [2, max_speakers]
+        for k in range(2, max_speakers + 1):
+            clustering = AgglomerativeClustering(n_clusters=k, metric='cosine', linkage='average')
+            labels = clustering.fit_predict(embeddings)
+            if len(set(labels)) > 1:
+                score = silhouette_score(embeddings, labels, metric='cosine')
+                if score > best_score:
+                    best_score = score
+                    best_k = k
+                    best_labels = labels
 
-        # Search fixed k in range [2, max_speakers] if distance threshold didn't find clear split
-        if best_k == 1 and max_speakers >= 2:
-            for k in range(2, max_speakers + 1):
-                clustering = AgglomerativeClustering(n_clusters=k, metric='cosine', linkage='average')
-                labels = clustering.fit_predict(embeddings)
-                if len(set(labels)) > 1:
-                    score = silhouette_score(embeddings, labels, metric='cosine')
-                    if score > best_score:
-                        best_score = score
-                        best_k = k
-                        best_labels = labels
-
-        logger.info(f"Deep Diarization identified {best_k} speaker(s) (cosine silhouette score: {round(best_score, 3)})")
+        logger.info(f"Final Deep Diarization Choice: {best_k} speaker(s) across {n_samples} segments (best silhouette score: {round(best_score, 3)})")
 
         if best_k == 1:
             for seg in segments:

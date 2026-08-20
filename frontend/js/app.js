@@ -254,12 +254,17 @@ document.addEventListener('DOMContentLoaded', () => {
         // Update Live Transcript Stream
         if (job.segments && job.segments.length > 0) {
             segmentCountEl.textContent = `${job.segments.length} Segments`;
-            liveTranscriptText.innerHTML = job.segments.map(s => `
+            liveTranscriptText.innerHTML = job.segments.map(s => {
+                const spk = s.speaker || 'Speaker 1';
+                const spkClass = spk.toLowerCase().replace(/\s+/g, '-');
+                return `
                 <div class="segment-line">
+                    <span class="speaker-tag ${spkClass}">${escapeHtml(spk)}</span>
                     <span class="timestamp">[${formatTime(s.start)} - ${formatTime(s.end)}]</span>
                     <span>${escapeHtml(s.text)}</span>
                 </div>
-            `).join('');
+            `;
+            }).join('');
             liveTranscriptText.scrollTop = liveTranscriptText.scrollHeight;
         } else if (job.status === 'TRANSCRIBING') {
             liveTranscriptText.innerHTML = `<em>Transcribing speech segments...</em>`;
@@ -364,12 +369,17 @@ document.addEventListener('DOMContentLoaded', () => {
         modalDlTxt.href = `/api/jobs/${job.id}/download/txt`;
 
         if (job.segments && job.segments.length > 0) {
-            modalBodyText.innerHTML = job.segments.map(s => `
+            modalBodyText.innerHTML = job.segments.map(s => {
+                const spk = s.speaker || 'Speaker 1';
+                const spkClass = spk.toLowerCase().replace(/\s+/g, '-');
+                return `
                 <p style="margin-bottom: 10px;">
+                    <span class="speaker-tag ${spkClass}">${escapeHtml(spk)}</span>
                     <strong style="color: var(--accent-indigo);">[${formatTime(s.start)} - ${formatTime(s.end)}]</strong>
                     ${escapeHtml(s.text)}
                 </p>
-            `).join('');
+            `;
+            }).join('');
         } else {
             modalBodyText.innerHTML = `<p>${escapeHtml(job.full_text || 'No transcript segments available.')}</p>`;
         }

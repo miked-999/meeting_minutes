@@ -797,3 +797,21 @@ input:checked + .slider:before {
     font-size: 12px;
     font-weight: 500;
 }
+
+/* Speaker Badge Styling */
+.speaker-tag {
+    display: inline-block;
+    font-weight: 700;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-right: 6px;
+    color: #ffffff;
+    background: var(--accent-indigo);
+}
+
+.speaker-tag.speaker-1 { background: #6366f1; }
+.speaker-tag.speaker-2 { background: #8b5cf6; }
+.speaker-tag.speaker-3 { background: #10b981; }
+.speaker-tag.speaker-4 { background: #f59e0b; }
+.speaker-tag.speaker-5 { background: #ec4899; }

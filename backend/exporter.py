@@ -56,7 +56,7 @@ def generate_docx(job, output_path: Path, include_timestamps: bool = False) -> P
     meta_items = [
         ("Original File Name", job.original_filename),
         ("Audio Duration", f"{format_timestamp(job.duration_seconds or 0)} ({round(job.duration_seconds or 0, 1)} seconds)"),
-        ("Model Engine", f"Whisper {job.model_size.capitalize()}"),
+        ("Model Engine", f"Whisper {job.model_size.capitalize()} (Diarization Enabled)"),
     ]
     
     for idx, (label, val) in enumerate(meta_items):
@@ -93,6 +93,12 @@ def generate_docx(job, output_path: Path, include_timestamps: bool = False) -> P
             p = doc.add_paragraph()
             p.paragraph_format.space_after = Pt(6)
             
+            spk_str = f"{seg.get('speaker', 'Speaker 1')}: "
+            spk_run = p.add_run(spk_str)
+            spk_run.bold = True
+            spk_run.font.color.rgb = RGBColor(0x4F, 0x46, 0xE5) # Accent Indigo
+            spk_run.font.size = Pt(11)
+
             if include_timestamps:
                 ts_str = f"[{format_timestamp(seg.get('start', 0))} - {format_timestamp(seg.get('end', 0))}] "
                 ts_run = p.add_run(ts_str)
@@ -179,7 +185,7 @@ def generate_pdf(job, output_path: Path, include_timestamps: bool = False) -> Pa
     table_data = [
         [Paragraph("<b>Original File:</b>", text_style), Paragraph(job.original_filename, text_style)],
         [Paragraph("<b>Duration:</b>", text_style), Paragraph(f"{format_timestamp(job.duration_seconds or 0)} ({round(job.duration_seconds or 0, 1)}s)", text_style)],
-        [Paragraph("<b>Model Size:</b>", text_style), Paragraph(f"Whisper {job.model_size.capitalize()}", text_style)],
+        [Paragraph("<b>Model Engine:</b>", text_style), Paragraph(f"Whisper {job.model_size.capitalize()} (Diarization Enabled)", text_style)],
     ]
     
     t = Table(table_data, colWidths=[120, 380])
@@ -208,11 +214,12 @@ def generate_pdf(job, output_path: Path, include_timestamps: bool = False) -> Pa
     if segments:
         for seg in segments:
             txt_str = seg.get("text", "").strip()
+            spk_str = f"<b>{seg.get('speaker', 'Speaker 1')}:</b>"
             if include_timestamps:
                 ts_str = f"[{format_timestamp(seg.get('start', 0))} - {format_timestamp(seg.get('end', 0))}]"
-                p_content = f"<font color='#2563EB'><b>{ts_str}</b></font> {txt_str}"
+                p_content = f"<font color='#4F46E5'>{spk_str}</font> <font color='#2563EB'><b>{ts_str}</b></font> {txt_str}"
             else:
-                p_content = txt_str
+                p_content = f"<font color='#4F46E5'>{spk_str}</font> {txt_str}"
             
             story.append(Paragraph(p_content, text_style))
     else:
@@ -240,11 +247,12 @@ def generate_txt(job, output_path: Path, include_timestamps: bool = False) -> Pa
     
     if segments:
         for seg in segments:
+            spk = f"{seg.get('speaker', 'Speaker 1')}: "
             if include_timestamps:
                 ts = f"[{format_timestamp(seg.get('start', 0))} - {format_timestamp(seg.get('end', 0))}]"
-                lines.append(f"{ts} {seg.get('text', '').strip()}")
+                lines.append(f"{spk}{ts} {seg.get('text', '').strip()}")
             else:
-                lines.append(seg.get('text', '').strip())
+                lines.append(f"{spk}{seg.get('text', '').strip()}")
     else:
         lines.append(job.full_text or "")
 
@@ -253,7 +261,7 @@ def generate_txt(job, output_path: Path, include_timestamps: bool = False) -> Pa
     return output_path
 
 def generate_srt(job, output_path: Path) -> Path:
-    """Generates SubRip (.srt) subtitle file."""
+    """Generates SubRip (.srt) subtitle file with speaker tags."""
     segments = []
     if job.transcript_json:
         try:
@@ -266,10 +274,11 @@ def generate_srt(job, output_path: Path) -> Path:
         start_ts = format_srt_timestamp(seg.get('start', 0))
         end_ts = format_srt_timestamp(seg.get('end', 0))
         text = seg.get('text', '').strip()
+        spk = seg.get('speaker', 'Speaker 1')
         lines.extend([
             str(idx),
             f"{start_ts} --> {end_ts}",
-            text,
+            f"{spk}: {text}",
             ""
         ])
 

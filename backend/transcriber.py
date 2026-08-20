@@ -69,20 +69,31 @@ def run_transcription(
 
     segments = []
     full_text_parts = []
-
     for seg in segments_raw:
         seg_dict = {
             "id": seg.id,
             "start": round(seg.start, 2),
             "end": round(seg.end, 2),
-            "text": seg.text.strip()
+            "text": seg.text.strip(),
+            "speaker": "Speaker 1"
         }
         segments.append(seg_dict)
-        full_text_parts.append(seg.text.strip())
 
         if progress_callback and total_duration > 0:
-            current_progress = min(99.0, (seg.end / total_duration) * 100.0)
+            current_progress = min(88.0, (seg.end / total_duration) * 100.0)
             progress_callback(current_progress)
 
-    full_text = " ".join(full_text_parts)
+    # Perform Speaker Diarization
+    if segments:
+        try:
+            from backend.diarizer import perform_diarization
+            segments = perform_diarization(wav_path, segments)
+        except Exception as e:
+            logger.warning(f"Diarization error: {e}")
+
+    for seg in segments:
+        spk = seg.get("speaker", "Speaker 1")
+        full_text_parts.append(f"{spk}: {seg['text']}")
+
+    full_text = "\n".join(full_text_parts)
     return segments, full_text, detected_lang

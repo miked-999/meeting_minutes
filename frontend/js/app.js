@@ -209,6 +209,26 @@ document.addEventListener('DOMContentLoaded', () => {
         pollingInterval = setInterval(pollFunc, 1500);
     }
 
+    const activeTimestampsToggle = document.getElementById('active-timestamps-toggle');
+    const historyTimestampsToggle = document.getElementById('history-timestamps-toggle');
+
+    if (activeTimestampsToggle) {
+        activeTimestampsToggle.addEventListener('change', () => {
+            if (activeJobId) {
+                const tsParam = activeTimestampsToggle.checked ? '?timestamps=true' : '?timestamps=false';
+                dlDocxBtn.href = `/api/jobs/${activeJobId}/download/docx${tsParam}`;
+                dlPdfBtn.href = `/api/jobs/${activeJobId}/download/pdf${tsParam}`;
+                dlTxtBtn.href = `/api/jobs/${activeJobId}/download/txt${tsParam}`;
+            }
+        });
+    }
+
+    if (historyTimestampsToggle) {
+        historyTimestampsToggle.addEventListener('change', () => {
+            renderHistoryItems(allJobs);
+        });
+    }
+
     function updateActiveJobUI(job) {
         activeFilename.textContent = job.original_filename;
         activeStageDesc.textContent = job.current_stage;
@@ -249,10 +269,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Show download buttons if complete
         if (job.status === 'COMPLETED') {
+            const tsParam = activeTimestampsToggle && activeTimestampsToggle.checked ? '?timestamps=true' : '?timestamps=false';
             activeDownloadsBar.classList.remove('hidden');
-            dlDocxBtn.href = `/api/jobs/${job.id}/download/docx`;
-            dlPdfBtn.href = `/api/jobs/${job.id}/download/pdf`;
-            dlTxtBtn.href = `/api/jobs/${job.id}/download/txt`;
+            dlDocxBtn.href = `/api/jobs/${job.id}/download/docx${tsParam}`;
+            dlPdfBtn.href = `/api/jobs/${job.id}/download/pdf${tsParam}`;
+            dlTxtBtn.href = `/api/jobs/${job.id}/download/txt${tsParam}`;
             dlSrtBtn.href = `/api/jobs/${job.id}/download/srt`;
         } else {
             activeDownloadsBar.classList.add('hidden');
@@ -288,6 +309,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        const tsParam = historyTimestampsToggle && historyTimestampsToggle.checked ? '?timestamps=true' : '?timestamps=false';
+
         historyListContainer.innerHTML = filtered.map(j => `
             <div class="history-item-card">
                 <div class="history-meta-group">
@@ -306,10 +329,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="status-pill status-${j.status.toLowerCase()}">${j.status}</span>
 
                     ${j.status === 'COMPLETED' ? `
-                        <a href="/api/jobs/${j.id}/download/docx" class="btn btn-export btn-docx" title="Download Word Doc">
+                        <a href="/api/jobs/${j.id}/download/docx${tsParam}" class="btn btn-export btn-docx" title="Download Word Doc">
                             <i class="fa-solid fa-file-word"></i> DOCX
                         </a>
-                        <a href="/api/jobs/${j.id}/download/pdf" class="btn btn-export btn-pdf" title="Download PDF Document">
+                        <a href="/api/jobs/${j.id}/download/pdf${tsParam}" class="btn btn-export btn-pdf" title="Download PDF Document">
                             <i class="fa-solid fa-file-pdf"></i> PDF
                         </a>
                         <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="openTranscriptModal('${j.id}')">

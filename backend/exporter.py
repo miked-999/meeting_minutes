@@ -24,11 +24,10 @@ def format_srt_timestamp(seconds: float) -> str:
     millis = int((seconds - total_seconds) * 1000)
     return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
 
-def generate_docx(job, output_path: Path) -> Path:
+def generate_docx(job, output_path: Path, include_timestamps: bool = False) -> Path:
     """Generates a professional Word (.docx) document for the transcript."""
     from docx import Document
     from docx.shared import Inches, Pt, RGBColor
-    from docx.enum.text import WD_ALIGN_PARAGRAPH
 
     doc = Document()
     
@@ -40,7 +39,7 @@ def generate_docx(job, output_path: Path) -> Path:
     title_run.font.bold = True
     title_run.font.color.rgb = RGBColor(0x1E, 0x29, 0x3B)
     
-    # Metadata Subtitle
+    # Subtitle
     sub_p = doc.add_paragraph()
     sub_run = sub_p.add_run(f"Generated on {datetime.now().strftime('%B %d, %Y at %H:%M')}")
     sub_run.font.name = "Calibri"
@@ -51,13 +50,12 @@ def generate_docx(job, output_path: Path) -> Path:
     doc.add_paragraph() # Spacer
 
     # Metadata Box Table
-    table = doc.add_table(rows=4, cols=2)
+    table = doc.add_table(rows=3, cols=2)
     table.style = 'Table Grid'
     
     meta_items = [
         ("Original File Name", job.original_filename),
         ("Audio Duration", f"{format_timestamp(job.duration_seconds or 0)} ({round(job.duration_seconds or 0, 1)} seconds)"),
-        ("Language Detected", job.language.upper() if job.language else "Auto"),
         ("Model Engine", f"Whisper {job.model_size.capitalize()}"),
     ]
     
@@ -95,11 +93,12 @@ def generate_docx(job, output_path: Path) -> Path:
             p = doc.add_paragraph()
             p.paragraph_format.space_after = Pt(6)
             
-            ts_str = f"[{format_timestamp(seg.get('start', 0))} - {format_timestamp(seg.get('end', 0))}] "
-            ts_run = p.add_run(ts_str)
-            ts_run.bold = True
-            ts_run.font.color.rgb = RGBColor(0x25, 0x63, 0xEB) # Accent blue
-            ts_run.font.size = Pt(10)
+            if include_timestamps:
+                ts_str = f"[{format_timestamp(seg.get('start', 0))} - {format_timestamp(seg.get('end', 0))}] "
+                ts_run = p.add_run(ts_str)
+                ts_run.bold = True
+                ts_run.font.color.rgb = RGBColor(0x25, 0x63, 0xEB)
+                ts_run.font.size = Pt(10)
             
             txt_run = p.add_run(seg.get("text", "").strip())
             txt_run.font.size = Pt(11)
@@ -111,7 +110,7 @@ def generate_docx(job, output_path: Path) -> Path:
     doc.save(str(output_path))
     return output_path
 
-def generate_pdf(job, output_path: Path) -> Path:
+def generate_pdf(job, output_path: Path, include_timestamps: bool = False) -> Path:
     """Generates a styled PDF document for the transcript using reportlab."""
     from reportlab.lib.pagesizes import letter
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
@@ -160,15 +159,6 @@ def generate_pdf(job, output_path: Path) -> Path:
         spaceAfter=10
     )
     
-    timestamp_style = ParagraphStyle(
-        'Timestamp',
-        parent=styles['Normal'],
-        fontName='Helvetica-Bold',
-        fontSize=10,
-        leading=14,
-        textColor=colors.HexColor('#2563EB')
-    )
-    
     text_style = ParagraphStyle(
         'SegmentText',
         parent=styles['Normal'],
@@ -189,7 +179,6 @@ def generate_pdf(job, output_path: Path) -> Path:
     table_data = [
         [Paragraph("<b>Original File:</b>", text_style), Paragraph(job.original_filename, text_style)],
         [Paragraph("<b>Duration:</b>", text_style), Paragraph(f"{format_timestamp(job.duration_seconds or 0)} ({round(job.duration_seconds or 0, 1)}s)", text_style)],
-        [Paragraph("<b>Language:</b>", text_style), Paragraph((job.language or "Auto").upper(), text_style)],
         [Paragraph("<b>Model Size:</b>", text_style), Paragraph(f"Whisper {job.model_size.capitalize()}", text_style)],
     ]
     
@@ -218,10 +207,13 @@ def generate_pdf(job, output_path: Path) -> Path:
 
     if segments:
         for seg in segments:
-            ts_str = f"[{format_timestamp(seg.get('start', 0))} - {format_timestamp(seg.get('end', 0))}]"
             txt_str = seg.get("text", "").strip()
+            if include_timestamps:
+                ts_str = f"[{format_timestamp(seg.get('start', 0))} - {format_timestamp(seg.get('end', 0))}]"
+                p_content = f"<font color='#2563EB'><b>{ts_str}</b></font> {txt_str}"
+            else:
+                p_content = txt_str
             
-            p_content = f"<font color='#2563EB'><b>{ts_str}</b></font> {txt_str}"
             story.append(Paragraph(p_content, text_style))
     else:
         story.append(Paragraph(job.full_text or "No transcript text available.", text_style))
@@ -229,7 +221,7 @@ def generate_pdf(job, output_path: Path) -> Path:
     doc.build(story)
     return output_path
 
-def generate_txt(job, output_path: Path) -> Path:
+def generate_txt(job, output_path: Path, include_timestamps: bool = False) -> Path:
     """Generates a plain text file of the transcript."""
     segments = []
     if job.transcript_json:
@@ -242,15 +234,17 @@ def generate_txt(job, output_path: Path) -> Path:
         f"MEETING TRANSCRIPT - {job.original_filename}",
         f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}",
         f"Duration: {format_timestamp(job.duration_seconds or 0)}",
-        f"Language: {(job.language or 'Auto').upper()}",
         "=" * 60,
         ""
     ]
     
     if segments:
         for seg in segments:
-            ts = f"[{format_timestamp(seg.get('start', 0))} - {format_timestamp(seg.get('end', 0))}]"
-            lines.append(f"{ts} {seg.get('text', '').strip()}")
+            if include_timestamps:
+                ts = f"[{format_timestamp(seg.get('start', 0))} - {format_timestamp(seg.get('end', 0))}]"
+                lines.append(f"{ts} {seg.get('text', '').strip()}")
+            else:
+                lines.append(seg.get('text', '').strip())
     else:
         lines.append(job.full_text or "")
 

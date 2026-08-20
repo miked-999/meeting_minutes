@@ -167,7 +167,14 @@
 
                         <!-- Download Actions Bar (Shown when completed) -->
                         <div id="active-downloads-bar" class="downloads-bar hidden">
-                            <h4><i class="fa-solid fa-download"></i> Download Completed Transcript:</h4>
+                            <div class="flex-between download-header-row" style="margin-bottom: 10px;">
+                                <h4><i class="fa-solid fa-download"></i> Download Completed Transcript:</h4>
+                                <label class="toggle-switch" title="Include timestamps in exported documents">
+                                    <input type="checkbox" id="active-timestamps-toggle">
+                                    <span class="slider round"></span>
+                                    <span class="toggle-label">Include Timestamps</span>
+                                </label>
+                            </div>
                             <div class="btn-group">
                                 <a id="dl-docx-btn" href="#" class="btn btn-export btn-docx">
                                     <i class="fa-solid fa-file-word"></i> Word (.docx)
@@ -198,6 +205,11 @@
                     </div>
 
                     <div class="history-controls">
+                        <label class="toggle-switch" title="Include timestamps in downloaded documents">
+                            <input type="checkbox" id="history-timestamps-toggle">
+                            <span class="slider round"></span>
+                            <span class="toggle-label">Include Timestamps</span>
+                        </label>
                         <div class="search-box">
                             <i class="fa-solid fa-magnifying-glass"></i>
                             <input type="text" id="history-search" placeholder="Search transcripts...">

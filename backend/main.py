@@ -114,17 +114,18 @@ def get_job_detail(job_id: str, db: Session = Depends(get_db), current_user: dic
     return job.to_dict()
 
 @app.get("/api/jobs/{job_id}/download/{fmt}")
-def download_export(job_id: str, fmt: str, db: Session = Depends(get_db)):
-    """Download transcript in docx, pdf, txt, or srt format."""
+def download_export(job_id: str, fmt: str, timestamps: bool = False, db: Session = Depends(get_db)):
+    """Download transcript in docx, pdf, txt, or srt format with optional timestamps."""
     job = db.query(TranscriptionJob).filter(TranscriptionJob.id == job_id).first()
     if not job or job.status != "COMPLETED":
         raise HTTPException(status_code=404, detail="Completed job not found")
 
     fmt = fmt.lower()
+    ts_suffix = "_ts" if timestamps else ""
     filename_map = {
-        "docx": f"transcript_{job.id}.docx",
-        "pdf": f"transcript_{job.id}.pdf",
-        "txt": f"transcript_{job.id}.txt",
+        "docx": f"transcript_{job.id}{ts_suffix}.docx",
+        "pdf": f"transcript_{job.id}{ts_suffix}.pdf",
+        "txt": f"transcript_{job.id}{ts_suffix}.txt",
         "srt": f"transcript_{job.id}.srt",
     }
 
@@ -132,8 +133,18 @@ def download_export(job_id: str, fmt: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Invalid format. Use docx, pdf, txt, or srt.")
 
     file_path = EXPORT_DIR / filename_map[fmt]
+
+    # Generate on-demand if specified format with/without timestamps doesn't exist
     if not file_path.exists():
-        raise HTTPException(status_code=404, detail=f"Export file {fmt} not generated yet.")
+        from backend.exporter import generate_docx, generate_pdf, generate_txt, generate_srt
+        if fmt == "docx":
+            generate_docx(job, file_path, include_timestamps=timestamps)
+        elif fmt == "pdf":
+            generate_pdf(job, file_path, include_timestamps=timestamps)
+        elif fmt == "txt":
+            generate_txt(job, file_path, include_timestamps=timestamps)
+        elif fmt == "srt":
+            generate_srt(job, file_path)
 
     download_name = f"{Path(job.original_filename).stem}_transcript.{fmt}"
     return FileResponse(path=file_path, filename=download_name, media_type="application/octet-stream")

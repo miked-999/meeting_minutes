@@ -1,90 +1,62 @@
 import logging
 import wave
-import struct
+import torch
 import numpy as np
 from pathlib import Path
-from scipy.fft import rfft
-from scipy.signal import get_window
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.metrics import silhouette_score
-from sklearn.preprocessing import StandardScaler
+
+from backend.config import MODELS_DIR
 
 logger = logging.getLogger(__name__)
 
-def extract_audio_segment_features(audio_data: np.ndarray, sample_rate: int = 16000) -> np.ndarray:
-    """
-    Extracts acoustic voice embedding features (MFCC-like filterbanks, spectral centroid,
-    energy, and pitch statistics) for an audio segment.
-    """
-    if len(audio_data) < sample_rate * 0.2:
-        # Padded fallback for very short audio clips
-        return np.zeros(26)
+_SPEAKER_CLASSIFIER = None
 
-    # Frame parameters: 25ms frame, 10ms hop
-    frame_len = int(sample_rate * 0.025)
-    hop_len = int(sample_rate * 0.010)
-    window = get_window('hamming', frame_len)
+def get_speaker_classifier():
+    """Loads and caches SpeechBrain's ECAPA-TDNN deep speaker recognition model."""
+    global _SPEAKER_CLASSIFIER
+    if _SPEAKER_CLASSIFIER is not None:
+        return _SPEAKER_CLASSIFIER
 
-    num_frames = (len(audio_data) - frame_len) // hop_len + 1
-    if num_frames < 1:
-        return np.zeros(26)
+    try:
+        from speechbrain.inference.speaker import EncoderClassifier
 
-    # Filterbank energies across 20 mel-scale frequency bands
-    n_filters = 20
-    low_freq_mel = 0
-    high_freq_mel = 2595 * np.log10(1 + (sample_rate / 2) / 700)
-    mel_pts = np.linspace(low_freq_mel, high_freq_mel, n_filters + 2)
-    hz_pts = 700 * (10**(mel_pts / 2595) - 1)
-    bin_pts = np.floor((frame_len + 1) * hz_pts / sample_rate).astype(int)
-
-    nfft = frame_len
-    fbanks = np.zeros((n_filters, int(np.floor(nfft / 2 + 1))))
-    for m in range(1, n_filters + 1):
-        f_m_minus = bin_pts[m - 1]
-        f_m = bin_pts[m]
-        f_m_plus = bin_pts[m + 1]
-
-        for k in range(f_m_minus, f_m):
-            fbanks[m - 1, k] = (k - bin_pts[m - 1]) / (f_m - bin_pts[m - 1])
-        for k in range(f_m, f_m_plus):
-            fbanks[m - 1, k] = (bin_pts[m + 1] - k) / (bin_pts[m + 1] - f_m)
-
-    frame_features = []
-    for i in range(num_frames):
-        start_idx = i * hop_len
-        end_idx = start_idx + frame_len
-        frame = audio_data[start_idx:end_idx] * window
+        save_dir = str(MODELS_DIR / "spkrec-ecapa-voxceleb")
+        logger.info(f"Loading SpeechBrain ECAPA-TDNN speaker embedding model from {save_dir}...")
         
-        # Power spectrum
-        mag_spec = np.abs(rfft(frame, n=nfft))
-        pow_spec = (1.0 / nfft) * (mag_spec ** 2)
-        
-        # Filterbank log energy
-        filter_energies = np.dot(fbanks, pow_spec)
-        filter_energies = np.where(filter_energies == 0, np.finfo(float).eps, filter_energies)
-        log_filter_energies = np.log(filter_energies)
+        _SPEAKER_CLASSIFIER = EncoderClassifier.from_hparams(
+            source="speechbrain/spkrec-ecapa-voxceleb",
+            savedir=save_dir,
+            run_opts={"device": "cuda" if torch.cuda.is_available() else "cpu"}
+        )
+        return _SPEAKER_CLASSIFIER
+    except Exception as e:
+        logger.warning(f"Failed to load SpeechBrain ECAPA-TDNN model: {e}")
+        return None
 
-        # Spectral centroid & energy
-        freqs = np.linspace(0, sample_rate / 2, len(mag_spec))
-        spec_sum = np.sum(pow_spec) + 1e-10
-        centroid = np.sum(freqs * pow_spec) / spec_sum
-        energy = np.sum(frame ** 2)
+def extract_deep_speaker_embedding(classifier, audio_tensor: torch.Tensor) -> np.ndarray:
+    """
+    Extracts a 192-dimensional deep voice embedding vector for an audio segment.
+    """
+    with torch.no_grad():
+        # Ensure audio length is at least 0.4 seconds (6400 samples at 16kHz) by padding
+        if audio_tensor.shape[1] < 6400:
+            pad_amount = 6400 - audio_tensor.shape[1]
+            audio_tensor = torch.nn.functional.pad(audio_tensor, (0, pad_amount))
 
-        feat_vector = np.concatenate([log_filter_energies, [centroid, energy]])
-        frame_features.append(feat_vector)
-
-    frame_features = np.array(frame_features)
-    
-    # Compute mean and standard deviation over frames to capture voice character
-    mean_feat = np.mean(frame_features, axis=0)
-    std_feat = np.std(frame_features, axis=0)
-    
-    return np.concatenate([mean_feat, std_feat])
+        embeddings = classifier.encode_batch(audio_tensor)
+        # Squeeze batch dimension to get 1D numpy array
+        emb_np = embeddings.squeeze().cpu().numpy()
+        # L2 normalize embedding vector
+        norm = np.linalg.norm(emb_np)
+        if norm > 0:
+            emb_np = emb_np / norm
+        return emb_np
 
 def perform_diarization(wav_path: Path, segments: list) -> list:
     """
-    Performs speaker diarization by clustering acoustic voice embeddings of segments.
-    Appends 'speaker' field (e.g. 'Speaker 1', 'Speaker 2') to each segment.
+    Performs deep speaker diarization using SpeechBrain ECAPA-TDNN embeddings & Cosine Distance Clustering.
+    Attaches 'speaker' field (e.g. 'Speaker 1', 'Speaker 2', 'Speaker 3') to each segment.
     """
     if not segments:
         return segments
@@ -93,8 +65,15 @@ def perform_diarization(wav_path: Path, segments: list) -> list:
         segments[0]["speaker"] = "Speaker 1"
         return segments
 
+    classifier = get_speaker_classifier()
+    if classifier is None:
+        logger.warning("ECAPA-TDNN classifier unavailable. Falling back to single speaker.")
+        for seg in segments:
+            seg["speaker"] = "Speaker 1"
+        return segments
+
     try:
-        # Load WAV file
+        # Load WAV file into float tensor
         with wave.open(str(wav_path), 'rb') as wf:
             sample_rate = wf.getframerate()
             num_channels = wf.getnchannels()
@@ -120,13 +99,16 @@ def perform_diarization(wav_path: Path, segments: list) -> list:
             end_sample = int(end_sec * sample_rate)
             
             chunk = audio[start_sample:end_sample]
-            if len(chunk) > 0:
-                emb = extract_audio_segment_features(chunk, sample_rate)
+            if len(chunk) > 800:  # > 50ms of audio
+                chunk_tensor = torch.tensor(chunk, dtype=torch.float32).unsqueeze(0)
+                emb = extract_deep_speaker_embedding(classifier, chunk_tensor)
                 embeddings.append(emb)
                 valid_indices.append(idx)
-            else:
-                embeddings.append(np.zeros(44))
-                valid_indices.append(idx)
+
+        if not embeddings:
+            for seg in segments:
+                seg["speaker"] = "Speaker 1"
+            return segments
 
         embeddings = np.array(embeddings)
 
@@ -135,50 +117,65 @@ def perform_diarization(wav_path: Path, segments: list) -> list:
                 seg["speaker"] = "Speaker 1"
             return segments
 
-        # Standardize feature vectors
-        scaler = StandardScaler()
-        norm_embeddings = scaler.fit_transform(embeddings)
-
-        # Automatically determine optimal speaker count (from 1 to min(5, n_segments))
-        max_speakers = min(5, len(segments))
+        # Determine optimal number of speakers using cosine distance clustering
+        max_speakers = min(6, len(embeddings))
         best_k = 1
         best_score = -1.0
+        best_labels = np.zeros(len(embeddings), dtype=int)
 
-        if len(segments) >= 3 and max_speakers >= 2:
+        # Test distance threshold based clustering (cosine distance threshold = 0.38)
+        clustering_thresh = AgglomerativeClustering(
+            n_clusters=None,
+            distance_threshold=0.38,
+            metric='cosine',
+            linkage='average'
+        )
+        thresh_labels = clustering_thresh.fit_predict(embeddings)
+        n_thresh_clusters = len(set(thresh_labels))
+
+        if 2 <= n_thresh_clusters <= max_speakers:
+            score = silhouette_score(embeddings, thresh_labels, metric='cosine')
+            if score > 0.05:
+                best_k = n_thresh_clusters
+                best_score = score
+                best_labels = thresh_labels
+
+        # Search fixed k in range [2, max_speakers] if distance threshold didn't find clear split
+        if best_k == 1 and max_speakers >= 2:
             for k in range(2, max_speakers + 1):
-                clustering = AgglomerativeClustering(n_clusters=k, metric='euclidean', linkage='ward')
-                labels = clustering.fit_predict(norm_embeddings)
+                clustering = AgglomerativeClustering(n_clusters=k, metric='cosine', linkage='average')
+                labels = clustering.fit_predict(embeddings)
                 if len(set(labels)) > 1:
-                    score = silhouette_score(norm_embeddings, labels)
+                    score = silhouette_score(embeddings, labels, metric='cosine')
                     if score > best_score:
                         best_score = score
                         best_k = k
+                        best_labels = labels
 
-        # If silhouette score is low, default to 2 speakers if distinct clusters exist, else 1
-        if best_k > 1 and best_score < 0.1:
-            best_k = 2 if len(segments) >= 4 else 1
-
-        logger.info(f"Diarization identified {best_k} speaker(s) (silhouette score: {round(best_score, 3)})")
+        logger.info(f"Deep Diarization identified {best_k} speaker(s) (cosine silhouette score: {round(best_score, 3)})")
 
         if best_k == 1:
             for seg in segments:
                 seg["speaker"] = "Speaker 1"
         else:
-            clustering = AgglomerativeClustering(n_clusters=best_k, metric='euclidean', linkage='ward')
-            cluster_labels = clustering.fit_predict(norm_embeddings)
-            
-            # Map numeric clusters to Speaker 1, Speaker 2 ordered by first appearance
+            # Map numeric cluster labels to Speaker 1, Speaker 2, Speaker 3 in order of first appearance
             speaker_map = {}
             next_speaker_num = 1
             
-            for idx, label in enumerate(cluster_labels):
-                if label not in speaker_map:
-                    speaker_map[label] = f"Speaker {next_speaker_num}"
+            for idx_in_valid, orig_idx in enumerate(valid_indices):
+                lbl = best_labels[idx_in_valid]
+                if lbl not in speaker_map:
+                    speaker_map[lbl] = f"Speaker {next_speaker_num}"
                     next_speaker_num += 1
-                segments[idx]["speaker"] = speaker_map[label]
+                segments[orig_idx]["speaker"] = speaker_map[lbl]
+
+            # Assign default to any unmapped segment
+            for seg in segments:
+                if "speaker" not in seg:
+                    seg["speaker"] = "Speaker 1"
 
     except Exception as e:
-        logger.error(f"Diarization failed gracefully: {e}. Falling back to default Speaker 1.")
+        logger.error(f"Deep Diarization failed: {e}. Falling back to default Speaker 1.")
         for seg in segments:
             seg["speaker"] = "Speaker 1"
 

@@ -77,18 +77,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalDlTxt = document.getElementById('modal-dl-txt');
 
     // 1. Check Auth Status
-    fetch('/api/auth-status')
-        .then(res => res.json())
-        .then(data => {
-            if (data.keycloak_enabled) {
-                authStatusBadge.innerHTML = `<i class="fa-solid fa-user-check"></i> Keycloak (${data.user.preferred_username || 'User'})`;
-                authStatusBadge.style.background = 'rgba(99, 102, 241, 0.2)';
-                authStatusBadge.style.color = '#a5b4fc';
-            } else {
-                authStatusBadge.innerHTML = `<i class="fa-solid fa-unlock"></i> Auth Mode: Off (Local)`;
-            }
-        })
-        .catch(() => {});
+    if (authStatusBadge) {
+        fetch('/api/auth-status')
+            .then(res => res.json())
+            .then(data => {
+                if (data.keycloak_enabled) {
+                    authStatusBadge.innerHTML = `<i class="fa-solid fa-user-check"></i> Keycloak (${data.user.preferred_username || 'User'})`;
+                    authStatusBadge.style.background = 'rgba(99, 102, 241, 0.2)';
+                    authStatusBadge.style.color = '#a5b4fc';
+                }
+            })
+            .catch(() => {});
+    }
 
     // 2. Tab Navigation
     tabBtns.forEach(btn => {

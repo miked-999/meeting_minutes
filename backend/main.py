@@ -52,6 +52,7 @@ async def create_transcription_job(
     file: UploadFile = File(...),
     model_size: str = Form("small"),
     language: Optional[str] = Form("en"),
+    enable_diarization: bool = Form(False),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -88,7 +89,8 @@ async def create_transcription_job(
         progress=0.0,
         current_stage="Queued for processing",
         model_size=model_size,
-        language=language if language and language.lower() != "auto" else None,
+        language=language if language and language.lower() != "auto" else "en",
+        enable_diarization=enable_diarization,
     )
     db.add(job)
     db.commit()

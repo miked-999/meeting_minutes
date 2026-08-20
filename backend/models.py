@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, Float, Integer, Text, DateTime
+from sqlalchemy import Column, String, Float, Integer, Text, DateTime, Boolean
 from backend.database import Base
 
 class TranscriptionJob(Base):
@@ -19,9 +19,10 @@ class TranscriptionJob(Base):
     current_stage = Column(String(255), nullable=False, default="Queued")
     
     # Transcription settings & output
-    model_size = Column(String(50), nullable=False, default="tiny")
-    language = Column(String(20), nullable=True)  # auto-detected or specified
-    transcript_json = Column(Text, nullable=True)  # JSON string of segments [{start, end, text}]
+    model_size = Column(String(50), nullable=False, default="small")
+    language = Column(String(20), nullable=True, default="en")
+    enable_diarization = Column(Boolean, nullable=False, default=False)
+    transcript_json = Column(Text, nullable=True)  # JSON string of segments [{start, end, text, speaker}]
     full_text = Column(Text, nullable=True)
     
     # Generated document export paths
@@ -51,6 +52,7 @@ class TranscriptionJob(Base):
             "current_stage": self.current_stage,
             "model_size": self.model_size,
             "language": self.language or "Auto",
+            "enable_diarization": self.enable_diarization,
             "full_text": self.full_text or "",
             "segments": segments,
             "has_docx": bool(self.docx_path),

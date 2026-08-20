@@ -47,7 +47,8 @@ def get_whisper_model(model_size: str = "tiny"):
 def run_transcription(
     wav_path: Path,
     model_size: str = "tiny",
-    language: str = None,
+    language: str = "en",
+    enable_diarization: bool = False,
     total_duration: float = 0.0,
     progress_callback = None
 ):
@@ -61,7 +62,7 @@ def run_transcription(
     if language and language.lower() not in ["auto", "none", ""]:
         kwargs["language"] = language.lower()
 
-    logger.info(f"Starting transcription for {wav_path} (duration: {total_duration}s)...")
+    logger.info(f"Starting transcription for {wav_path} (duration: {total_duration}s, diarization: {enable_diarization})...")
     segments_raw, info = model.transcribe(str(wav_path), **kwargs)
 
     detected_lang = info.language
@@ -82,8 +83,8 @@ def run_transcription(
             current_progress = min(88.0, (seg.end / total_duration) * 100.0)
             progress_callback(current_progress, segments)
 
-    # Perform Speaker Diarization
-    if segments:
+    # Perform Speaker Diarization ONLY if requested by user
+    if enable_diarization and segments:
         try:
             from backend.diarizer import perform_diarization
             segments = perform_diarization(wav_path, segments)
@@ -91,8 +92,11 @@ def run_transcription(
             logger.warning(f"Diarization error: {e}")
 
     for seg in segments:
-        spk = seg.get("speaker", "Speaker 1")
-        full_text_parts.append(f"{spk}: {seg['text']}")
+        spk = seg.get("speaker", None)
+        if spk:
+            full_text_parts.append(f"{spk}: {seg['text']}")
+        else:
+            full_text_parts.append(seg['text'])
 
     full_text = "\n".join(full_text_parts)
     return segments, full_text, detected_lang

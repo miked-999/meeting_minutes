@@ -85,7 +85,7 @@
                     </div>
 
                     <!-- Transcription Options Form -->
-                    <div class="options-grid single-option">
+                    <div class="options-grid">
                         <div class="form-group">
                             <label for="model-select">
                                 <i class="fa-solid fa-brain"></i> Whisper STT Model
@@ -95,6 +95,20 @@
                                 <option value="tiny">Tiny (Fastest)</option>
                                 <option value="medium">Medium (Highest Accuracy)</option>
                             </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="diarization-toggle" class="flex-between" style="margin-bottom: 6px;">
+                                <span><i class="fa-solid fa-users-between-lines"></i> Speaker Diarization</span>
+                                <span class="badge experimental-badge">EXPERIMENTAL</span>
+                            </label>
+                            <div class="toggle-wrapper" style="padding: 8px 12px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="diarization-toggle">
+                                    <span class="slider round"></span>
+                                    <span class="toggle-label">Identify Individual Speakers</span>
+                                </label>
+                            </div>
                         </div>
                     </div>
 

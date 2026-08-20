@@ -324,6 +324,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="history-submeta">
                             <span><i class="fa-regular fa-clock"></i> ${formatTime(j.duration_seconds)}</span>
                             <span><i class="fa-solid fa-brain"></i> Whisper ${j.model_size}</span>
+                            ${j.enable_diarization ? `<span style="color: #fbbf24;"><i class="fa-solid fa-users"></i> Diarized</span>` : ''}
                             <span><i class="fa-regular fa-calendar"></i> ${formatDate(j.created_at)}</span>
                         </div>
                     </div>
@@ -344,7 +345,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         </button>
                     ` : ''}
 
-                    <button class="btn-icon" title="Delete Job" onclick="deleteJob('${j.id}')">
+                    <button class="btn-icon btn-delete-item" title="Delete Job" onclick="confirmDeleteJob(this, '${j.id}')">
                         <i class="fa-solid fa-trash-can"></i>
                     </button>
                 </div>
@@ -361,7 +362,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!job) return;
 
         modalFilename.textContent = job.original_filename;
-        modalMeta.textContent = `Duration: ${formatTime(job.duration_seconds)} | Model: Whisper ${job.model_size}`;
+        modalMeta.textContent = `Duration: ${formatTime(job.duration_seconds)} | Model: Whisper ${job.model_size}${job.enable_diarization ? ' | Diarization: Enabled' : ''}`;
 
         modalDlDocx.href = `/api/jobs/${job.id}/download/docx`;
         modalDlPdf.href = `/api/jobs/${job.id}/download/pdf`;
@@ -391,9 +392,37 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target === transcriptModal) transcriptModal.classList.add('hidden');
     });
 
-    window.deleteJob = async function(jobId) {
-        if (!confirm("Are you sure you want to delete this transcription job?")) return;
+    // 8. Robust In-Line Delete Confirmation
+    window.confirmDeleteJob = function(btnElement, jobId) {
+        if (btnElement.getAttribute('data-confirming') === 'true') {
+            executeDelete(jobId, btnElement);
+        } else {
+            btnElement.setAttribute('data-confirming', 'true');
+            btnElement.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Confirm Delete?`;
+            btnElement.style.background = 'rgba(244, 63, 94, 0.25)';
+            btnElement.style.color = '#fda4af';
+            btnElement.style.border = '1px solid rgba(244, 63, 94, 0.5)';
+            btnElement.style.borderRadius = '6px';
+            btnElement.style.padding = '4px 10px';
+            btnElement.style.fontSize = '12px';
 
+            setTimeout(() => {
+                if (btnElement && btnElement.getAttribute('data-confirming') === 'true') {
+                    btnElement.removeAttribute('data-confirming');
+                    btnElement.innerHTML = `<i class="fa-solid fa-trash-can"></i>`;
+                    btnElement.style.background = 'transparent';
+                    btnElement.style.color = 'var(--text-muted)';
+                    btnElement.style.border = 'none';
+                    btnElement.style.padding = '4px 8px';
+                }
+            }, 4000);
+        }
+    };
+
+    async function executeDelete(jobId, btnElement) {
+        if (btnElement) {
+            btnElement.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Deleting...`;
+        }
         try {
             const res = await fetch(`/api/jobs/${jobId}`, { method: 'DELETE' });
             if (res.ok) {
@@ -414,7 +443,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {
             alert(`Error deleting job: ${e.message}`);
         }
-    };
+    }
 
     // Helper Functions
     function formatBytes(bytes) {

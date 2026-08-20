@@ -63,6 +63,7 @@ def process_job(job_id: str):
             wav_path=output_wav_path,
             model_size=job.model_size,
             language=job.language,
+            enable_diarization=job.enable_diarization,
             total_duration=duration,
             progress_callback=update_progress
         )

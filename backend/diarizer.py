@@ -118,15 +118,15 @@ def perform_diarization(wav_path: Path, segments: list) -> list:
             return segments
 
         # Determine optimal number of speakers using cosine distance clustering
-        max_speakers = min(6, len(embeddings))
+        max_speakers = min(20, len(embeddings))
         best_k = 1
         best_score = -1.0
         best_labels = np.zeros(len(embeddings), dtype=int)
 
-        # Test distance threshold based clustering (cosine distance threshold = 0.38)
+        # Test distance threshold based clustering (cosine distance threshold = 0.36)
         clustering_thresh = AgglomerativeClustering(
             n_clusters=None,
-            distance_threshold=0.38,
+            distance_threshold=0.36,
             metric='cosine',
             linkage='average'
         )
@@ -135,7 +135,7 @@ def perform_diarization(wav_path: Path, segments: list) -> list:
 
         if 2 <= n_thresh_clusters <= max_speakers:
             score = silhouette_score(embeddings, thresh_labels, metric='cosine')
-            if score > 0.05:
+            if score > 0.02:
                 best_k = n_thresh_clusters
                 best_score = score
                 best_labels = thresh_labels

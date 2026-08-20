@@ -5,6 +5,30 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
+SPEAKER_COLORS_HEX = {
+    "speaker 1": "#6366F1",
+    "speaker 2": "#8B5CF6",
+    "speaker 3": "#10B981",
+    "speaker 4": "#F59E0B",
+    "speaker 5": "#EC4899",
+    "speaker 6": "#06B6D4",
+    "speaker 7": "#3B82F6",
+    "speaker 8": "#84CC16",
+    "speaker 9": "#D97706",
+    "speaker 10": "#A855F7",
+}
+
+def get_speaker_color_hex(speaker_str: str) -> str:
+    if not speaker_str:
+        return "#6366F1"
+    return SPEAKER_COLORS_HEX.get(speaker_str.lower().strip(), "#6366F1")
+
+def get_speaker_rgb(speaker_str: str):
+    from docx.shared import RGBColor
+    hex_val = get_speaker_color_hex(speaker_str).lstrip("#")
+    r, g, b = int(hex_val[0:2], 16), int(hex_val[2:4], 16), int(hex_val[4:6], 16)
+    return RGBColor(r, g, b)
+
 def format_timestamp(seconds: float) -> str:
     """Formats float seconds into HH:MM:SS format."""
     total_seconds = int(seconds)
@@ -27,7 +51,7 @@ def format_srt_timestamp(seconds: float) -> str:
 def generate_docx(job, output_path: Path, include_timestamps: bool = False) -> Path:
     """Generates a professional Word (.docx) document for the transcript."""
     from docx import Document
-    from docx.shared import Inches, Pt, RGBColor
+    from docx.shared import Pt, RGBColor
 
     doc = Document()
     
@@ -49,6 +73,8 @@ def generate_docx(job, output_path: Path, include_timestamps: bool = False) -> P
     
     doc.add_paragraph() # Spacer
 
+    is_diarized = getattr(job, 'enable_diarization', False)
+
     # Metadata Box Table
     table = doc.add_table(rows=3, cols=2)
     table.style = 'Table Grid'
@@ -56,7 +82,7 @@ def generate_docx(job, output_path: Path, include_timestamps: bool = False) -> P
     meta_items = [
         ("Original File Name", job.original_filename),
         ("Audio Duration", f"{format_timestamp(job.duration_seconds or 0)} ({round(job.duration_seconds or 0, 1)} seconds)"),
-        ("Model Engine", f"Whisper {job.model_size.capitalize()} (Diarization Enabled)"),
+        ("Model Engine", f"Whisper {job.model_size.capitalize()} (Diarization: {'Enabled' if is_diarized else 'Disabled'})"),
     ]
     
     for idx, (label, val) in enumerate(meta_items):
@@ -93,11 +119,13 @@ def generate_docx(job, output_path: Path, include_timestamps: bool = False) -> P
             p = doc.add_paragraph()
             p.paragraph_format.space_after = Pt(6)
             
-            spk_str = f"{seg.get('speaker', 'Speaker 1')}: "
-            spk_run = p.add_run(spk_str)
-            spk_run.bold = True
-            spk_run.font.color.rgb = RGBColor(0x4F, 0x46, 0xE5) # Accent Indigo
-            spk_run.font.size = Pt(11)
+            # Speaker Tag (ONLY if diarization was enabled and speaker exists)
+            spk_val = seg.get('speaker', None)
+            if is_diarized and spk_val:
+                spk_run = p.add_run(f"{spk_val}: ")
+                spk_run.bold = True
+                spk_run.font.color.rgb = get_speaker_rgb(spk_val)
+                spk_run.font.size = Pt(11)
 
             if include_timestamps:
                 ts_str = f"[{format_timestamp(seg.get('start', 0))} - {format_timestamp(seg.get('end', 0))}] "
@@ -176,7 +204,8 @@ def generate_pdf(job, output_path: Path, include_timestamps: bool = False) -> Pa
     )
 
     story = []
-    
+    is_diarized = getattr(job, 'enable_diarization', False)
+
     # Title & Subtitle
     story.append(Paragraph("Meeting Transcript", title_style))
     story.append(Paragraph(f"Generated on {datetime.now().strftime('%B %d, %Y at %H:%M')}", meta_subtitle))
@@ -185,7 +214,7 @@ def generate_pdf(job, output_path: Path, include_timestamps: bool = False) -> Pa
     table_data = [
         [Paragraph("<b>Original File:</b>", text_style), Paragraph(job.original_filename, text_style)],
         [Paragraph("<b>Duration:</b>", text_style), Paragraph(f"{format_timestamp(job.duration_seconds or 0)} ({round(job.duration_seconds or 0, 1)}s)", text_style)],
-        [Paragraph("<b>Model Engine:</b>", text_style), Paragraph(f"Whisper {job.model_size.capitalize()} (Diarization Enabled)", text_style)],
+        [Paragraph("<b>Model Engine:</b>", text_style), Paragraph(f"Whisper {job.model_size.capitalize()} (Diarization: {'Enabled' if is_diarized else 'Disabled'})", text_style)],
     ]
     
     t = Table(table_data, colWidths=[120, 380])
@@ -214,14 +243,19 @@ def generate_pdf(job, output_path: Path, include_timestamps: bool = False) -> Pa
     if segments:
         for seg in segments:
             txt_str = seg.get("text", "").strip()
-            spk_str = f"<b>{seg.get('speaker', 'Speaker 1')}:</b>"
+            spk_val = seg.get('speaker', None)
+            
+            p_parts = []
+            if is_diarized and spk_val:
+                hex_color = get_speaker_color_hex(spk_val)
+                p_parts.append(f"<font color='{hex_color}'><b>{spk_val}:</b></font>")
+                
             if include_timestamps:
                 ts_str = f"[{format_timestamp(seg.get('start', 0))} - {format_timestamp(seg.get('end', 0))}]"
-                p_content = f"<font color='#4F46E5'>{spk_str}</font> <font color='#2563EB'><b>{ts_str}</b></font> {txt_str}"
-            else:
-                p_content = f"<font color='#4F46E5'>{spk_str}</font> {txt_str}"
-            
-            story.append(Paragraph(p_content, text_style))
+                p_parts.append(f"<font color='#2563EB'><b>{ts_str}</b></font>")
+                
+            p_parts.append(txt_str)
+            story.append(Paragraph(" ".join(p_parts), text_style))
     else:
         story.append(Paragraph(job.full_text or "No transcript text available.", text_style))
 
@@ -237,6 +271,8 @@ def generate_txt(job, output_path: Path, include_timestamps: bool = False) -> Pa
         except Exception:
             pass
 
+    is_diarized = getattr(job, 'enable_diarization', False)
+
     lines = [
         f"MEETING TRANSCRIPT - {job.original_filename}",
         f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}",
@@ -247,12 +283,14 @@ def generate_txt(job, output_path: Path, include_timestamps: bool = False) -> Pa
     
     if segments:
         for seg in segments:
-            spk = f"{seg.get('speaker', 'Speaker 1')}: "
+            parts = []
+            spk = seg.get('speaker', None)
+            if is_diarized and spk:
+                parts.append(f"{spk}:")
             if include_timestamps:
-                ts = f"[{format_timestamp(seg.get('start', 0))} - {format_timestamp(seg.get('end', 0))}]"
-                lines.append(f"{spk}{ts} {seg.get('text', '').strip()}")
-            else:
-                lines.append(f"{spk}{seg.get('text', '').strip()}")
+                parts.append(f"[{format_timestamp(seg.get('start', 0))} - {format_timestamp(seg.get('end', 0))}]")
+            parts.append(seg.get('text', '').strip())
+            lines.append(" ".join(parts))
     else:
         lines.append(job.full_text or "")
 
@@ -261,7 +299,7 @@ def generate_txt(job, output_path: Path, include_timestamps: bool = False) -> Pa
     return output_path
 
 def generate_srt(job, output_path: Path) -> Path:
-    """Generates SubRip (.srt) subtitle file with speaker tags."""
+    """Generates SubRip (.srt) subtitle file with speaker tags if diarized."""
     segments = []
     if job.transcript_json:
         try:
@@ -269,16 +307,20 @@ def generate_srt(job, output_path: Path) -> Path:
         except Exception:
             pass
 
+    is_diarized = getattr(job, 'enable_diarization', False)
+
     lines = []
     for idx, seg in enumerate(segments, 1):
         start_ts = format_srt_timestamp(seg.get('start', 0))
         end_ts = format_srt_timestamp(seg.get('end', 0))
         text = seg.get('text', '').strip()
-        spk = seg.get('speaker', 'Speaker 1')
+        spk = seg.get('speaker', None)
+        
+        caption_text = f"{spk}: {text}" if (is_diarized and spk) else text
         lines.extend([
             str(idx),
             f"{start_ts} --> {end_ts}",
-            f"{spk}: {text}",
+            caption_text,
             ""
         ])
 

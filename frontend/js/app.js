@@ -255,7 +255,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (job.segments && job.segments.length > 0) {
             segmentCountEl.textContent = `${job.segments.length} Segments`;
             liveTranscriptText.innerHTML = job.segments.map(s => {
-                const spkHtml = s.speaker ? `<span class="speaker-tag ${s.speaker.toLowerCase().replace(/\s+/g, '-')}">${escapeHtml(s.speaker)}</span>` : '';
+                const showSpeaker = job.enable_diarization && s.speaker;
+                const spkHtml = showSpeaker ? `<span class="speaker-tag ${s.speaker.toLowerCase().replace(/\s+/g, '-')}">${escapeHtml(s.speaker)}</span>` : '';
                 return `
                 <div class="segment-line">
                     ${spkHtml}
@@ -370,11 +371,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (job.segments && job.segments.length > 0) {
             modalBodyText.innerHTML = job.segments.map(s => {
-                const spk = s.speaker || 'Speaker 1';
-                const spkClass = spk.toLowerCase().replace(/\s+/g, '-');
+                const showSpeaker = job.enable_diarization && s.speaker;
+                const spkHtml = showSpeaker ? `<span class="speaker-tag ${s.speaker.toLowerCase().replace(/\s+/g, '-')}">${escapeHtml(s.speaker)}</span>` : '';
                 return `
                 <p style="margin-bottom: 10px;">
-                    <span class="speaker-tag ${spkClass}">${escapeHtml(spk)}</span>
+                    ${spkHtml}
                     <strong style="color: var(--accent-indigo);">[${formatTime(s.start)} - ${formatTime(s.end)}]</strong>
                     ${escapeHtml(s.text)}
                 </p>

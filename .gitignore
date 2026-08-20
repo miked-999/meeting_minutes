@@ -1,0 +1,20 @@
+# Environment & Cache
+venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+# Storage & Databases
+*.db
+uploads/*
+!uploads/.gitkeep
+converted/*
+!converted/.gitkeep
+exports/*
+!exports/.gitkeep
+models_cache/*
+!models_cache/.gitkeep
+
+# Temporary Test Files
+test_meeting.wav
+test_download.*

@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meeting Transcribe - Speech to Text</title>
+    <!-- Inter Google Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Top Header Navigation -->
+        <header class="app-header">
+            <div class="brand">
+                <div class="brand-logo">
+                    <i class="fa-solid fa-microphone-lines"></i>
+                </div>
+                <div class="brand-text">
+                    <h1>Meeting Transcribe</h1>
+                    <span class="subtext">Speech to Text</span>
+                </div>
+            </div>
+            
+            <div class="header-badges">
+                <span class="badge airgap-badge" title="100% Offline Local STT Engine">
+                    <i class="fa-solid fa-shield-halved"></i> Air-Gapped Local
+                </span>
+                <span id="auth-status-badge" class="badge auth-badge" title="Authentication Status">
+                    <i class="fa-solid fa-user-lock"></i> Keycloak Disabled
+                </span>
+            </div>
+        </header>
+
+        <!-- Main Navigation Tabs -->
+        <nav class="nav-tabs">
+            <button class="tab-btn active" data-tab="upload-tab">
+                <i class="fa-solid fa-cloud-arrow-up"></i> New Transcription
+            </button>
+            <button class="tab-btn" data-tab="history-tab">
+                <i class="fa-solid fa-clock-rotate-left"></i> History & Downloads
+                <span id="history-count-pill" class="pill">0</span>
+            </button>
+        </nav>
+
+        <!-- Tab 1: Upload & Active Job View -->
+        <main id="upload-tab" class="tab-content active">
+            <div class="grid-layout">
+                <!-- Left: Upload Box & Configuration -->
+                <div class="card upload-card">
+                    <div class="card-header">
+                        <h2><i class="fa-solid fa-file-audio"></i> Upload Meeting Media</h2>
+                        <p class="card-desc">Upload audio or video recording (.mp4, .mkv, .mp3, .m4a, .wav)</p>
+                    </div>
+
+                    <!-- Drag & Drop Zone -->
+                    <div id="drop-zone" class="drop-zone">
+                        <input type="file" id="file-input" accept="audio/*,video/*,.mp4,.mkv,.avi,.mov,.webm,.mp3,.wav,.m4a,.flac,.aac" hidden>
+                        <div class="drop-zone-content">
+                            <div class="upload-icon-wrapper">
+                                <i class="fa-solid fa-file-arrow-up"></i>
+                            </div>
+                            <h3>Drag & drop meeting file here</h3>
+                            <p class="browse-text">or <span class="highlight-link">browse files</span> from your computer</p>
+                            <span class="file-limits">Supports MP4, MKV, MP3, M4A, WAV & more (Up to 90+ mins)</span>
+                        </div>
+                    </div>
+
+                    <!-- Selected File Information Bar -->
+                    <div id="selected-file-info" class="selected-file-card hidden">
+                        <div class="file-details">
+                            <i id="file-type-icon" class="fa-solid fa-file-video file-icon"></i>
+                            <div class="file-text">
+                                <span id="file-name" class="name">meeting_recording.mp4</span>
+                                <span id="file-size" class="size">45.2 MB</span>
+                            </div>
+                        </div>
+                        <button id="remove-file-btn" class="btn-icon" title="Remove File">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+
+                    <!-- Transcription Options Form -->
+                    <div class="options-grid single-option">
+                        <div class="form-group">
+                            <label for="model-select">
+                                <i class="fa-solid fa-brain"></i> Whisper STT Model
+                            </label>
+                            <select id="model-select" class="form-select">
+                                <option value="small" selected>Small (Balanced - Recommended)</option>
+                                <option value="tiny">Tiny (Fastest)</option>
+                                <option value="medium">Medium (Highest Accuracy)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Submit Action Button -->
+                    <button id="start-transcribe-btn" class="btn btn-primary btn-block" disabled>
+                        <i class="fa-solid fa-bolt"></i> Start Local Transcription
+                    </button>
+                </div>
+
+                <!-- Right: Active Processing & Monitor Panel -->
+                <div class="card monitor-card">
+                    <div class="card-header">
+                        <h2><i class="fa-solid fa-wave-square"></i> Active Processing Monitor</h2>
+                        <p class="card-desc">Real-time asynchronous job status & progress</p>
+                    </div>
+
+                    <!-- Empty State when no active job -->
+                    <div id="no-active-job" class="empty-state">
+                        <i class="fa-solid fa-compact-disc spin-slow"></i>
+                        <h3>No Active Job Running</h3>
+                        <p>Upload a file to start transcribing or select a past job from the History tab.</p>
+                    </div>
+
+                    <!-- Active Job Card (Hidden by default) -->
+                    <div id="active-job-container" class="active-job-details hidden">
+                        <div class="status-banner">
+                            <div class="status-title">
+                                <span id="active-filename" class="job-filename">Meeting_August_20.mp4</span>
+                                <span id="active-status-badge" class="status-pill status-transcribing">
+                                    <i class="fa-solid fa-spinner fa-spin"></i> TRANSCRIBING
+                                </span>
+                            </div>
+                            <div class="stage-info">
+                                <span id="active-stage-desc">Transcribing audio with Whisper model...</span>
+                                <span id="active-progress-pct" class="progress-pct">45%</span>
+                            </div>
+                        </div>
+
+                        <!-- Animated Progress Bar -->
+                        <div class="progress-bar-container">
+                            <div id="active-progress-fill" class="progress-bar-fill" style="width: 45%;"></div>
+                        </div>
+
+                        <!-- Progress Steps Checklist -->
+                        <div class="step-tracker">
+                            <div id="step-upload" class="step-item step-done">
+                                <i class="fa-solid fa-circle-check"></i> Media Uploaded
+                            </div>
+                            <div id="step-convert" class="step-item step-active">
+                                <i class="fa-solid fa-circle-notch fa-spin"></i> Audio Extraction (16kHz WAV)
+                            </div>
+                            <div id="step-transcribe" class="step-item">
+                                <i class="fa-regular fa-circle"></i> Speech Recognition
+                            </div>
+                            <div id="step-export" class="step-item">
+                                <i class="fa-regular fa-circle"></i> Word (.docx) & PDF Export
+                            </div>
+                        </div>
+
+                        <!-- Live Transcript Stream Preview Box -->
+                        <div class="live-preview-box">
+                            <div class="preview-header">
+                                <span><i class="fa-solid fa-terminal"></i> Live Transcript Stream</span>
+                                <span id="segment-count" class="badge-mini">0 Segments</span>
+                            </div>
+                            <div id="live-transcript-text" class="preview-content">
+                                <em>Waiting for speech segments...</em>
+                            </div>
+                        </div>
+
+                        <!-- Download Actions Bar (Shown when completed) -->
+                        <div id="active-downloads-bar" class="downloads-bar hidden">
+                            <h4><i class="fa-solid fa-download"></i> Download Completed Transcript:</h4>
+                            <div class="btn-group">
+                                <a id="dl-docx-btn" href="#" class="btn btn-export btn-docx">
+                                    <i class="fa-solid fa-file-word"></i> Word (.docx)
+                                </a>
+                                <a id="dl-pdf-btn" href="#" class="btn btn-export btn-pdf">
+                                    <i class="fa-solid fa-file-pdf"></i> PDF (.pdf)
+                                </a>
+                                <a id="dl-txt-btn" href="#" class="btn btn-export btn-txt">
+                                    <i class="fa-solid fa-file-lines"></i> Plain Text
+                                </a>
+                                <a id="dl-srt-btn" href="#" class="btn btn-export btn-srt">
+                                    <i class="fa-solid fa-closed-captioning"></i> Subtitle (.srt)
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Tab 2: History & Downloads Dashboard -->
+        <main id="history-tab" class="tab-content">
+            <div class="card history-card">
+                <div class="card-header flex-between">
+                    <div>
+                        <h2><i class="fa-solid fa-clock-rotate-left"></i> Transcription History & Downloads</h2>
+                        <p class="card-desc">Access past meeting transcripts and download document reports</p>
+                    </div>
+
+                    <div class="history-controls">
+                        <div class="search-box">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="history-search" placeholder="Search transcripts...">
+                        </div>
+                        <button id="refresh-history-btn" class="btn btn-secondary" title="Refresh List">
+                            <i class="fa-solid fa-rotate-right"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <!-- History Table / Card Container -->
+                <div id="history-list-container" class="history-list">
+                    <div class="empty-state">
+                        <i class="fa-solid fa-folder-open"></i>
+                        <p>No past transcriptions found.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Transcript Detail View Modal -->
+    <div id="transcript-modal" class="modal-backdrop hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h3 id="modal-filename">Meeting_Recording.mp4</h3>
+                    <span id="modal-meta" class="subtext">Duration: 12:45 | Language: EN | Model: Whisper Small</span>
+                </div>
+                <button id="close-modal-btn" class="btn-icon">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <div class="modal-actions-bar">
+                <div class="btn-group">
+                    <a id="modal-dl-docx" href="#" class="btn btn-export btn-docx">
+                        <i class="fa-solid fa-file-word"></i> Download .docx
+                    </a>
+                    <a id="modal-dl-pdf" href="#" class="btn btn-export btn-pdf">
+                        <i class="fa-solid fa-file-pdf"></i> Download PDF
+                    </a>
+                    <a id="modal-dl-txt" href="#" class="btn btn-export btn-txt">
+                        <i class="fa-solid fa-file-lines"></i> Plain Text
+                    </a>
+                </div>
+            </div>
+
+            <div id="modal-body-text" class="modal-body">
+                <!-- Transcript content populated dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

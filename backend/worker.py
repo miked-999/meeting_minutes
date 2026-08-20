@@ -118,7 +118,6 @@ def process_job(job_id: str):
 
         try:
             if job.converted_filename:
-                from backend.config import CONVERTED_DIR
                 conv_file_path = CONVERTED_DIR / job.converted_filename
                 if conv_file_path.exists():
                     conv_file_path.unlink()

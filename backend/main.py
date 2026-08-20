@@ -156,10 +156,7 @@ def list_jobs(
     session_id = extract_session_id(request, x_session_id)
     query = db.query(TranscriptionJob)
     if session_id:
-        # Filter jobs by session_id or unassigned legacy jobs
-        query = query.filter(
-            (TranscriptionJob.session_id == session_id) | (TranscriptionJob.session_id.is_(None))
-        )
+        query = query.filter(TranscriptionJob.session_id == session_id)
     jobs = query.order_by(TranscriptionJob.created_at.desc()).all()
     return [j.to_dict(db_session=db) for j in jobs]
 

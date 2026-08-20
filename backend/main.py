@@ -24,10 +24,22 @@ logger = logging.getLogger(__name__)
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
+        from backend.worker import recover_pending_queue
+        recover_pending_queue()
+    except Exception as e:
+        logger.warning(f"Startup queue recovery failed: {e}")
+    yield
+
 app = FastAPI(
     title="Air-Gapped Meeting Transcription API",
     description="Local speech-to-text transcription engine with Word/PDF exports and Keycloak auth support.",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # Enable CORS for local development
@@ -119,13 +131,13 @@ async def create_transcription_job(
     # Submit to background queue worker
     queue_transcription_job(job.id)
 
-    return JSONResponse(status_code=201, content=job.to_dict())
+    return JSONResponse(status_code=201, content=job.to_dict(db_session=db))
 
 @app.get("/api/jobs")
 def list_jobs(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """List all transcription jobs ordered by creation time descending."""
     jobs = db.query(TranscriptionJob).order_by(TranscriptionJob.created_at.desc()).all()
-    return [j.to_dict() for j in jobs]
+    return [j.to_dict(db_session=db) for j in jobs]
 
 class RenameJobRequest(BaseModel):
     title: str
@@ -163,7 +175,7 @@ def rename_job(
     except Exception:
         pass
 
-    return job.to_dict()
+    return job.to_dict(db_session=db)
 
 @app.get("/api/jobs/{job_id}")
 def get_job_detail(job_id: str, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
@@ -171,7 +183,7 @@ def get_job_detail(job_id: str, db: Session = Depends(get_db), current_user: dic
     job = db.query(TranscriptionJob).filter(TranscriptionJob.id == job_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    return job.to_dict()
+    return job.to_dict(db_session=db)
 
 @app.get("/api/jobs/{job_id}/download/{fmt}")
 def download_export(job_id: str, fmt: str, timestamps: bool = False, db: Session = Depends(get_db)):

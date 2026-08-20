@@ -165,3 +165,24 @@ def process_job(job_id: str):
 def queue_transcription_job(job_id: str):
     """Submits a job ID to the background executor thread."""
     _executor.submit(process_job, job_id)
+
+def recover_pending_queue():
+    """Resumes processing for any pending or interrupted jobs upon application startup."""
+    db = SessionLocal()
+    try:
+        pending_jobs = db.query(TranscriptionJob).filter(
+            TranscriptionJob.status.in_(["QUEUED", "CONVERTING", "TRANSCRIBING"])
+        ).order_by(TranscriptionJob.created_at.asc()).all()
+
+        if pending_jobs:
+            logger.info(f"Startup Queue Recovery: Found {len(pending_jobs)} pending/interrupted job(s). Re-queuing...")
+            for j in pending_jobs:
+                if j.status != "QUEUED":
+                    j.status = "QUEUED"
+                    j.current_stage = "Queued for processing"
+                    db.commit()
+                queue_transcription_job(j.id)
+    except Exception as e:
+        logger.warning(f"Error during queue recovery: {e}")
+    finally:
+        db.close()

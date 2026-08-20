@@ -244,6 +244,9 @@ document.addEventListener('DOMContentLoaded', () => {
             activeStatusBadge.innerHTML = `<i class="fa-solid fa-circle-check"></i> COMPLETED`;
         } else if (job.status === 'FAILED') {
             activeStatusBadge.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> FAILED`;
+        } else if (job.status === 'QUEUED') {
+            const posStr = job.queue_position ? ` (Line Position ${job.queue_position})` : '';
+            activeStatusBadge.innerHTML = `<i class="fa-regular fa-clock"></i> QUEUED${posStr}`;
         } else {
             activeStatusBadge.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> ${job.status}`;
         }

@@ -33,7 +33,7 @@ class TranscriptionJob(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime, nullable=True)
 
-    def to_dict(self):
+    def to_dict(self, db_session=None):
         import json
         segments = []
         if self.transcript_json:
@@ -42,6 +42,18 @@ class TranscriptionJob(Base):
             except Exception:
                 segments = []
 
+        queue_position = None
+        current_stage_display = self.current_stage
+
+        if self.status == "QUEUED" and db_session is not None:
+            # Calculate 1-based queue position among QUEUED jobs
+            queued_ahead = db_session.query(TranscriptionJob).filter(
+                TranscriptionJob.status == "QUEUED",
+                TranscriptionJob.created_at < self.created_at
+            ).count()
+            queue_position = queued_ahead + 1
+            current_stage_display = f"Queued (Position {queue_position} in line)"
+
         return {
             "id": self.id,
             "original_filename": self.original_filename,
@@ -49,7 +61,8 @@ class TranscriptionJob(Base):
             "duration_seconds": round(self.duration_seconds or 0, 1),
             "status": self.status,
             "progress": round(self.progress, 1),
-            "current_stage": self.current_stage,
+            "current_stage": current_stage_display,
+            "queue_position": queue_position,
             "model_size": self.model_size,
             "language": self.language or "Auto",
             "enable_diarization": self.enable_diarization,

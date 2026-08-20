@@ -255,11 +255,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (job.segments && job.segments.length > 0) {
             segmentCountEl.textContent = `${job.segments.length} Segments`;
             liveTranscriptText.innerHTML = job.segments.map(s => {
-                const spk = s.speaker || 'Speaker 1';
-                const spkClass = spk.toLowerCase().replace(/\s+/g, '-');
+                const spkHtml = s.speaker ? `<span class="speaker-tag ${s.speaker.toLowerCase().replace(/\s+/g, '-')}">${escapeHtml(s.speaker)}</span>` : '';
                 return `
                 <div class="segment-line">
-                    <span class="speaker-tag ${spkClass}">${escapeHtml(spk)}</span>
+                    ${spkHtml}
                     <span class="timestamp">[${formatTime(s.start)} - ${formatTime(s.end)}]</span>
                     <span>${escapeHtml(s.text)}</span>
                 </div>

@@ -74,8 +74,7 @@ def run_transcription(
             "id": seg.id,
             "start": round(seg.start, 2),
             "end": round(seg.end, 2),
-            "text": seg.text.strip(),
-            "speaker": "Speaker 1"
+            "text": seg.text.strip()
         }
         segments.append(seg_dict)
 

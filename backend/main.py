@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 from typing import Optional, List
 
+from pydantic import BaseModel
 from fastapi import FastAPI, File, UploadFile, Form, Depends, HTTPException, status
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -106,6 +107,30 @@ def list_jobs(db: Session = Depends(get_db), current_user: dict = Depends(get_cu
     """List all transcription jobs ordered by creation time descending."""
     jobs = db.query(TranscriptionJob).order_by(TranscriptionJob.created_at.desc()).all()
     return [j.to_dict() for j in jobs]
+
+class RenameJobRequest(BaseModel):
+    title: str
+
+@app.patch("/api/jobs/{job_id}/rename")
+def rename_job(
+    job_id: str,
+    req: RenameJobRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Rename original title for a transcription job."""
+    job = db.query(TranscriptionJob).filter(TranscriptionJob.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    new_title = req.title.strip()
+    if not new_title:
+        raise HTTPException(status_code=400, detail="Title cannot be empty")
+    
+    job.original_filename = new_title
+    db.commit()
+    db.refresh(job)
+    return job.to_dict()
 
 @app.get("/api/jobs/{job_id}")
 def get_job_detail(job_id: str, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):

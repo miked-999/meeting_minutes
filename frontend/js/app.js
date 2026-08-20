@@ -321,7 +321,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="history-meta-group">
                     <i class="fa-solid ${j.original_filename.match(/\.(mp4|mkv|mov)$/i) ? 'fa-file-video' : 'fa-file-audio'} history-icon"></i>
                     <div class="history-title-block">
-                        <span class="title" onclick="openTranscriptModal('${j.id}')">${escapeHtml(j.original_filename)}</span>
+                        <div class="title-row" id="title-container-${j.id}" style="display: flex; align-items: center; gap: 8px;">
+                            <span class="title" onclick="openTranscriptModal('${j.id}')">${escapeHtml(j.original_filename)}</span>
+                            <button class="btn-icon btn-rename-title" title="Rename Title" onclick="startRenameJob(event, '${j.id}')">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                        </div>
                         <div class="history-submeta">
                             <span><i class="fa-regular fa-clock"></i> ${formatTime(j.duration_seconds)}</span>
                             <span><i class="fa-solid fa-brain"></i> Whisper ${j.model_size}</span>
@@ -356,6 +361,62 @@ document.addEventListener('DOMContentLoaded', () => {
 
     historySearch.addEventListener('input', () => renderHistoryItems(allJobs));
     refreshHistoryBtn.addEventListener('click', loadHistory);
+
+    // Title Rename Handlers
+    window.startRenameJob = function(event, jobId) {
+        if (event) event.stopPropagation();
+        const container = document.getElementById(`title-container-${jobId}`);
+        if (!container) return;
+
+        const job = allJobs.find(j => j.id === jobId);
+        if (!job) return;
+
+        container.innerHTML = `
+            <input type="text" id="rename-input-${jobId}" class="rename-title-input" value="${escapeHtml(job.original_filename)}" onkeydown="if(event.key==='Enter') saveRenameJob('${jobId}')" style="background: var(--bg-tertiary); border: 1px solid var(--accent-indigo); color: var(--text-primary); padding: 4px 8px; border-radius: 4px; font-size: 14px; width: 260px;">
+            <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 12px;" onclick="saveRenameJob('${jobId}')" title="Save Title">
+                <i class="fa-solid fa-check" style="color: var(--accent-emerald);"></i>
+            </button>
+            <button class="btn-icon" style="padding: 4px 8px; font-size: 12px;" onclick="loadHistory()" title="Cancel">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        `;
+
+        const inputEl = document.getElementById(`rename-input-${jobId}`);
+        if (inputEl) {
+            inputEl.focus();
+            inputEl.select();
+        }
+    };
+
+    window.saveRenameJob = async function(jobId) {
+        const inputEl = document.getElementById(`rename-input-${jobId}`);
+        if (!inputEl) return;
+
+        const newTitle = inputEl.value.trim();
+        if (!newTitle) return;
+
+        try {
+            const res = await fetch(`/api/jobs/${jobId}/rename`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: newTitle })
+            });
+
+            if (res.ok) {
+                const updatedJob = await res.json();
+                const jobIndex = allJobs.findIndex(j => j.id === jobId);
+                if (jobIndex !== -1) {
+                    allJobs[jobIndex].original_filename = updatedJob.original_filename;
+                }
+                renderHistoryItems(allJobs);
+            } else {
+                const err = await res.json();
+                alert(`Failed to rename title: ${err.detail || 'Server error'}`);
+            }
+        } catch (e) {
+            alert(`Error renaming title: ${e.message}`);
+        }
+    };
 
     // 7. Global Actions: Modal & Delete
     window.openTranscriptModal = function(jobId) {

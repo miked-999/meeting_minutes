@@ -106,6 +106,26 @@ def process_job(job_id: str):
         job.error_message = str(e)
         db.commit()
     finally:
+        # Auto-delete uploaded raw media file and converted WAV to free disk space & preserve privacy
+        try:
+            if job.stored_filename:
+                stored_file_path = UPLOAD_DIR / job.stored_filename
+                if stored_file_path.exists():
+                    stored_file_path.unlink()
+                    logger.info(f"Auto-deleted uploaded media file {stored_file_path}")
+        except Exception as cleanup_err:
+            logger.warning(f"Error auto-deleting stored media: {cleanup_err}")
+
+        try:
+            if job.converted_filename:
+                from backend.config import CONVERTED_DIR
+                conv_file_path = CONVERTED_DIR / job.converted_filename
+                if conv_file_path.exists():
+                    conv_file_path.unlink()
+                    logger.info(f"Auto-deleted converted WAV file {conv_file_path}")
+        except Exception as cleanup_err:
+            logger.warning(f"Error auto-deleting converted WAV: {cleanup_err}")
+
         db.close()
 
 def queue_transcription_job(job_id: str):

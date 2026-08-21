@@ -594,6 +594,29 @@ body {
     font-weight: 600;
 }
 
+.status-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-cancel-active {
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    background: rgba(244, 63, 94, 0.15);
+    color: #fda4af;
+    border: 1px solid rgba(244, 63, 94, 0.35);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-cancel-active:hover {
+    background: rgba(244, 63, 94, 0.35);
+    color: #ffffff;
+    box-shadow: 0 0 10px rgba(244, 63, 94, 0.4);
+}
+
 .status-pill {
     padding: 4px 10px;
     border-radius: 12px;
@@ -614,7 +637,7 @@ body {
     border: 1px solid rgba(16, 185, 129, 0.4);
 }
 
-.status-failed {
+.status-failed, .status-cancelled {
     background: rgba(244, 63, 94, 0.2);
     color: #fda4af;
     border: 1px solid rgba(244, 63, 94, 0.4);

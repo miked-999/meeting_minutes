@@ -43,6 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const activeJobContainer = document.getElementById('active-job-container');
     const activeFilename = document.getElementById('active-filename');
     const activeStatusBadge = document.getElementById('active-status-badge');
+    const cancelActiveJobBtn = document.getElementById('cancel-active-job-btn');
     const activeStageDesc = document.getElementById('active-stage-desc');
     const activeProgressPct = document.getElementById('active-progress-pct');
     const activeProgressFill = document.getElementById('active-progress-fill');
@@ -268,12 +269,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     queueCount.textContent = queuedJobs.length;
                     
                     queueListContainer.innerHTML = queuedJobs.map((qj, idx) => `
-                        <div class="queue-item">
-                            <span class="queue-item-name"><i class="fa-solid fa-file-audio"></i> ${qj.original_filename}</span>
-                            <div class="queue-item-meta">
-                                <span>${formatBytes(qj.file_size)}</span>
-                                <span class="badge-mini">Position ${qj.queue_position || (idx + 1)}</span>
+                        <div class="queue-item" style="display: flex; justify-content: space-between; align-items: center;">
+                            <div class="queue-item-left">
+                                <span class="queue-item-name"><i class="fa-solid fa-file-audio"></i> ${escapeHtml(qj.original_filename)}</span>
+                                <div class="queue-item-meta">
+                                    <span>${formatBytes(qj.file_size)}</span>
+                                    <span class="badge-mini">Position ${qj.queue_position || (idx + 1)}</span>
+                                </div>
                             </div>
+                            <button class="btn-icon btn-cancel-queued" onclick="requestCancelJob('${qj.id}')" title="Cancel queued job" style="color: var(--accent-rose); padding: 4px 8px;">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
                         </div>
                     `).join('');
                 } else {
@@ -333,6 +339,40 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    if (cancelActiveJobBtn) {
+        cancelActiveJobBtn.addEventListener('click', () => {
+            if (!activeJobId) return;
+            requestCancelJob(activeJobId);
+        });
+    }
+
+    window.requestCancelJob = function(jobId) {
+        if (confirm('Are you sure you want to stop/cancel this transcription job?')) {
+            cancelJob(jobId);
+        }
+    };
+
+    async function cancelJob(jobId) {
+        try {
+            const res = await fetchWithSession(`/api/jobs/${jobId}/cancel`, { method: 'POST' });
+            if (res.ok) {
+                const data = await res.json();
+                console.log('Cancel success:', data);
+                if (activeJobId === jobId) {
+                    activeJobContainer.classList.add('hidden');
+                    noActiveJob.classList.remove('hidden');
+                    activeJobId = null;
+                }
+                loadHistory();
+            } else {
+                const err = await res.json();
+                alert(`Failed to cancel job: ${err.detail || 'Server error'}`);
+            }
+        } catch (e) {
+            console.error('Error cancelling job:', e);
+        }
+    }
+
     function updateActiveJobUI(job) {
         activeFilename.textContent = job.original_filename;
         activeStageDesc.textContent = job.current_stage;
@@ -345,6 +385,8 @@ document.addEventListener('DOMContentLoaded', () => {
             activeStatusBadge.innerHTML = `<i class="fa-solid fa-circle-check"></i> COMPLETED`;
         } else if (job.status === 'FAILED') {
             activeStatusBadge.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> FAILED`;
+        } else if (job.status === 'CANCELLED') {
+            activeStatusBadge.innerHTML = `<i class="fa-solid fa-ban"></i> CANCELLED`;
         } else if (job.status === 'QUEUED') {
             const posStr = job.queue_position ? ` (Line Position ${job.queue_position})` : '';
             activeStatusBadge.innerHTML = `<i class="fa-regular fa-clock"></i> QUEUED${posStr}`;
@@ -352,14 +394,23 @@ document.addEventListener('DOMContentLoaded', () => {
             activeStatusBadge.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> ${job.status}`;
         }
 
+        // Check session ownership for privacy
+        const isOwnSession = !job.session_id || job.session_id === appSessionId;
+        const isCancelable = ['QUEUED', 'CONVERTING', 'TRANSCRIBING', 'DIARIZING'].includes(job.status);
+
+        if (cancelActiveJobBtn) {
+            if (isCancelable && isOwnSession) {
+                cancelActiveJobBtn.classList.remove('hidden');
+            } else {
+                cancelActiveJobBtn.classList.add('hidden');
+            }
+        }
+
         // Update Step Checklist
         stepUpload.className = 'step-item step-done';
         stepConvert.className = job.progress >= 15 ? 'step-item step-done' : 'step-item step-active';
         stepTranscribe.className = job.progress >= 90 ? 'step-item step-done' : (job.progress >= 15 ? 'step-item step-active' : 'step-item');
         stepExport.className = job.status === 'COMPLETED' ? 'step-item step-done' : (job.progress >= 90 ? 'step-item step-active' : 'step-item');
-
-        // Check session ownership for privacy
-        const isOwnSession = !job.session_id || job.session_id === appSessionId;
 
         // Update Live Transcript Stream
         if (!isOwnSession) {

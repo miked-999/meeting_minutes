@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Optional, List
 
 from pydantic import BaseModel
-from fastapi import FastAPI, File, UploadFile, Form, Depends, HTTPException, status
+from fastapi import FastAPI, File, UploadFile, Form, Depends, HTTPException, status, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -68,10 +68,13 @@ def auth_status(current_user: dict = Depends(get_current_user)):
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends, Header, Request
 
-def extract_session_id(request: Request, x_session_id: Optional[str] = Header(None)) -> Optional[str]:
-    if x_session_id:
+def extract_session_id(request: Request, x_session_id: Optional[str] = None) -> Optional[str]:
+    if x_session_id and isinstance(x_session_id, str):
         return x_session_id.strip()
-    return request.headers.get("x-session-id") or request.cookies.get("session_id") or request.query_params.get("session_id")
+    header_val = request.headers.get("x-session-id")
+    if header_val:
+        return header_val.strip()
+    return request.cookies.get("session_id") or request.query_params.get("session_id")
 
 @app.post("/api/transcribe")
 async def create_transcription_job(
@@ -271,6 +274,41 @@ def download_export(job_id: str, fmt: str, timestamps: bool = False, db: Session
         media_type=media_types[fmt],
         filename=export_name
     )
+
+@app.post("/api/jobs/{job_id}/cancel")
+def cancel_job(job_id: str, request: Request, db: Session = Depends(get_db)):
+    """Cancels an in-progress or queued transcription job."""
+    job = db.query(TranscriptionJob).filter(TranscriptionJob.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    session_id = extract_session_id(request)
+    if job.session_id and job.session_id != session_id:
+        raise HTTPException(status_code=403, detail="Unauthorized session access")
+
+    if job.status in ["COMPLETED", "FAILED", "CANCELLED"]:
+        return {"message": f"Job is already in state '{job.status}'", "job_id": job.id, "status": job.status}
+
+    from backend.worker import cancel_job_id
+    cancel_job_id(job.id)
+
+    job.status = "CANCELLED"
+    job.current_stage = "Cancelled by user"
+    db.commit()
+
+    try:
+        from backend.audit_logger import log_audit_event
+        log_audit_event(
+            event_type="JOB_CANCELLED",
+            job_id=job.id,
+            filename=job.original_filename,
+            details={"stage": "User requested cancellation"},
+            db_session=db
+        )
+    except Exception:
+        pass
+
+    return {"message": "Job cancellation requested", "job_id": job.id, "status": "CANCELLED"}
 
 @app.delete("/api/jobs/{job_id}")
 def delete_job(job_id: str, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):

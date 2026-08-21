@@ -165,9 +165,14 @@
                         <div class="status-banner">
                             <div class="status-title">
                                 <span id="active-filename" class="job-filename">Meeting_August_20.mp4</span>
-                                <span id="active-status-badge" class="status-pill status-transcribing">
-                                    <i class="fa-solid fa-spinner fa-spin"></i> TRANSCRIBING
-                                </span>
+                                <div class="status-actions">
+                                    <span id="active-status-badge" class="status-pill status-transcribing">
+                                        <i class="fa-solid fa-spinner fa-spin"></i> TRANSCRIBING
+                                    </span>
+                                    <button id="cancel-active-job-btn" class="btn btn-secondary btn-cancel-active" title="Cancel active transcription">
+                                        <i class="fa-solid fa-ban"></i> Cancel
+                                    </button>
+                                </div>
                             </div>
                             <div class="stage-info">
                                 <span id="active-stage-desc">Transcribing audio with Whisper model...</span>

@@ -14,6 +14,16 @@ from backend.exporter import generate_docx, generate_pdf, generate_txt, generate
 
 logger = logging.getLogger(__name__)
 
+class JobCancelledException(Exception):
+    """Raised when a job is cancelled by the user during execution."""
+    pass
+
+CANCELLED_JOB_IDS = set()
+
+def cancel_job_id(job_id: str):
+    """Marks a job ID as cancelled in memory."""
+    CANCELLED_JOB_IDS.add(job_id)
+
 # Single background worker thread to process jobs sequentially and avoid hardware overloading
 _executor = ThreadPoolExecutor(max_workers=1)
 
@@ -22,6 +32,15 @@ def process_job(job_id: str):
     db = SessionLocal()
     job = db.query(TranscriptionJob).filter(TranscriptionJob.id == job_id).first()
     if not job:
+        db.close()
+        return
+
+    # If job was already cancelled before processing started
+    if job.id in CANCELLED_JOB_IDS or job.status == "CANCELLED":
+        logger.info(f"Job {job.id} was cancelled before starting. Skipping processing.")
+        job.status = "CANCELLED"
+        job.current_stage = "Cancelled by user"
+        db.commit()
         db.close()
         return
 
@@ -39,6 +58,12 @@ def process_job(job_id: str):
         output_wav_path = CONVERTED_DIR / wav_filename
 
         duration = convert_to_wav(input_path, output_wav_path)
+        
+        # Check cancellation after conversion
+        db.refresh(job)
+        if job.id in CANCELLED_JOB_IDS or job.status == "CANCELLED":
+            raise JobCancelledException(f"Job {job.id} was cancelled after conversion")
+
         job.converted_filename = wav_filename
         job.duration_seconds = duration
         job.progress = 15.0
@@ -52,6 +77,11 @@ def process_job(job_id: str):
         db.commit()
 
         def update_progress(proc_percent: float, current_segments: list = None):
+            # Check for cancellation before updating progress
+            db.refresh(job)
+            if job.id in CANCELLED_JOB_IDS or job.status == "CANCELLED":
+                raise JobCancelledException(f"Job {job.id} was cancelled by user during transcription")
+
             # Scale transcription progress from 20% to 88%
             scaled_progress = 20.0 + (proc_percent * 0.68)
             job.progress = min(88.0, round(scaled_progress, 1))
@@ -121,6 +151,25 @@ def process_job(job_id: str):
         except Exception as audit_err:
             logger.warning(f"Audit log failed in worker: {audit_err}")
 
+    except JobCancelledException as cancel_err:
+        logger.info(f"Job {job_id} was cancelled: {cancel_err}")
+        job.status = "CANCELLED"
+        job.current_stage = "Cancelled by user"
+        job.error_message = "Transcription cancelled by user"
+        db.commit()
+
+        try:
+            from backend.audit_logger import log_audit_event
+            log_audit_event(
+                event_type="JOB_CANCELLED",
+                job_id=job.id,
+                filename=job.original_filename if 'job' in locals() and job else "Unknown",
+                details={"reason": "User requested cancellation"},
+                db_session=db
+            )
+        except Exception:
+            pass
+
     except Exception as e:
         err_msg = f"{str(e)}\n{traceback.format_exc()}"
         logger.error(f"Error processing job {job_id}: {err_msg}")
@@ -141,6 +190,7 @@ def process_job(job_id: str):
         except Exception:
             pass
     finally:
+        CANCELLED_JOB_IDS.discard(job_id)
         # Auto-delete uploaded raw media file and converted WAV to free disk space & preserve privacy
         try:
             if job.stored_filename:

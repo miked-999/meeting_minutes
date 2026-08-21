@@ -268,20 +268,29 @@ document.addEventListener('DOMContentLoaded', () => {
                     queueDrawer.classList.remove('hidden');
                     queueCount.textContent = queuedJobs.length;
                     
-                    queueListContainer.innerHTML = queuedJobs.map((qj, idx) => `
-                        <div class="queue-item" style="display: flex; justify-content: space-between; align-items: center;">
-                            <div class="queue-item-left">
-                                <span class="queue-item-name"><i class="fa-solid fa-file-audio"></i> ${escapeHtml(qj.original_filename)}</span>
-                                <div class="queue-item-meta">
-                                    <span>${formatBytes(qj.file_size)}</span>
-                                    <span class="badge-mini">Position ${qj.queue_position || (idx + 1)}</span>
-                                </div>
-                            </div>
+                    queueListContainer.innerHTML = queuedJobs.map((qj, idx) => {
+                        const isOwnJob = !qj.session_id || qj.session_id === appSessionId;
+                        const actionBtnHtml = isOwnJob ? `
                             <button class="btn-icon btn-cancel-queued" onclick="requestCancelJob('${qj.id}')" title="Cancel queued job" style="color: var(--accent-rose); padding: 4px 8px;">
                                 <i class="fa-solid fa-xmark"></i>
-                            </button>
-                        </div>
-                    `).join('');
+                            </button>` : `
+                            <span class="badge-mini" style="background: rgba(255, 255, 255, 0.05); color: var(--text-muted);" title="Job belongs to another session">
+                                <i class="fa-solid fa-lock"></i>
+                            </span>`;
+
+                        return `
+                            <div class="queue-item" style="display: flex; justify-content: space-between; align-items: center;">
+                                <div class="queue-item-left">
+                                    <span class="queue-item-name"><i class="fa-solid fa-file-audio"></i> ${escapeHtml(qj.original_filename)}</span>
+                                    <div class="queue-item-meta">
+                                        <span>${formatBytes(qj.file_size)}</span>
+                                        <span class="badge-mini">Position ${qj.queue_position || (idx + 1)}</span>
+                                    </div>
+                                </div>
+                                ${actionBtnHtml}
+                            </div>
+                        `;
+                    }).join('');
                 } else {
                     queueDrawer.classList.add('hidden');
                 }

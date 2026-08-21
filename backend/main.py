@@ -283,8 +283,11 @@ def cancel_job(job_id: str, request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Job not found")
 
     session_id = extract_session_id(request)
-    if job.session_id and job.session_id != session_id:
-        raise HTTPException(status_code=403, detail="Unauthorized session access")
+    if job.session_id and (not session_id or job.session_id != session_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to cancel transcriptions created in another session."
+        )
 
     if job.status in ["COMPLETED", "FAILED", "CANCELLED"]:
         return {"message": f"Job is already in state '{job.status}'", "job_id": job.id, "status": job.status}

@@ -27,17 +27,15 @@ This document provides complete, step-by-step instructions for installing, confi
    python --version
    ```
 
-### 1.2 Install FFmpeg for Windows
-1. Download a static 64-bit release build of FFmpeg from [gyan.dev/ffmpeg/builds](https://www.gyan.dev/ffmpeg/builds/) or [ffmpeg.org](https://ffmpeg.org/download.html).
-2. Extract the ZIP file and copy `ffmpeg.exe` and `ffprobe.exe` into a folder on your system (e.g. `C:\ffmpeg\bin` or directly into `C:\meeting_minutes\bin`).
-3. Add the folder containing `ffmpeg.exe` to your System Environment `PATH`:
-   - Press `Win + R`, type `sysdm.cpl`, and hit Enter.
-   - Go to **Advanced** ➔ **Environment Variables**.
-   - Under **System variables**, select `Path` ➔ Edit ➔ Add `C:\ffmpeg\bin`.
-4. Open a fresh PowerShell window and verify FFmpeg is accessible:
-   ```powershell
-   ffmpeg -version
-   ```
+### 1.2 FFmpeg Handling (Automatic via `static-ffmpeg`)
+
+> [!TIP]
+> **No System Installation Required!**  
+> The application includes the `static-ffmpeg` Python dependency in `requirements.txt`. Running `pip install -r requirements.txt` automatically resolves and embeds static FFmpeg and FFprobe binaries directly inside your Python virtual environment! No manual Windows installation or System PATH edits are needed.
+
+*(Optional)* If you prefer using custom system-wide static FFmpeg binaries:
+1. Download a static 64-bit release build of FFmpeg from [gyan.dev/ffmpeg/builds](https://www.gyan.dev/ffmpeg/builds/).
+2. Extract `ffmpeg.exe` and `ffprobe.exe` directly into your application directory (`C:\meeting_minutes\bin\`).
 
 ---
 

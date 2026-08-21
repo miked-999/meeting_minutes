@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import sys
 from pathlib import Path
+# pyrefly: ignore [missing-import]
 from faster_whisper import WhisperModel
 from backend.config import MODELS_DIR
 

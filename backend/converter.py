@@ -6,6 +6,13 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+# Auto-resolve static FFmpeg/FFprobe binaries via static_ffmpeg package
+try:
+    import static_ffmpeg
+    static_ffmpeg.add_paths()
+except Exception as e:
+    logger.warning(f"static_ffmpeg add_paths failed or skipped: {e}")
+
 def probe_media_duration(file_path: Path) -> float:
     """Uses ffprobe to return total duration in seconds of a media file."""
     cmd = [

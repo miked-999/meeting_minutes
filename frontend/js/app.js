@@ -106,6 +106,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // Auto-select Medium model when Speaker Diarisation toggle is enabled
+    if (diarizationToggle && modelSelect) {
+        diarizationToggle.addEventListener('change', () => {
+            if (diarizationToggle.checked) {
+                modelSelect.value = 'medium';
+            }
+        });
+    }
+
     // 3. File Selection & Drag-and-Drop
     dropZone.addEventListener('click', () => fileInput.click());
 

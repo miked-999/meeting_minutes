@@ -132,17 +132,52 @@ For a production deployment, run Python as an **automatic background Windows Ser
 
 ---
 
-### Option B: IIS Reverse Proxy Integration (HTTPS / Domain Binding)
+### Option B: IIS Reverse Proxy Integration (HTTPS & Corporate Domain Binding)
 
-To expose the application over standard HTTPS (`https://transcribe.yourcompany.com`) using IIS:
+**Option B** is how you make **Meeting Transcribe** accessible to everyone in your organisation over a secure, user-friendly corporate URL (such as `https://transcribe.company.local`) instead of requiring users to type `http://192.168.1.50:8000`.
 
-1. Install **IIS (Internet Information Services)** via Server Manager.
-2. Download and install two official Microsoft IIS modules:
-   - **Application Request Routing (ARR 3.0)**
-   - **URL Rewrite Module 2.1**
-3. Open IIS Manager, select your Server, open **Application Request Routing Cache** ➔ **Server Proxy Settings** ➔ Check **"Enable proxy"** ➔ Click Apply.
-4. Create a new IIS Web Site (e.g. `MeetingTranscribeWeb`) pointing to `C:\meeting_minutes\frontend`.
-5. Add a `web.config` file inside `C:\meeting_minutes\frontend` to reverse-proxy traffic to port 8000:
+#### 🔍 Traffic Flow Diagram:
+```text
+[ User Browser ] ──► (HTTPS Port 443) ──► [ IIS Web Server (Option B) ]
+                                                   │
+                                     (Internal Proxy Pass to 127.0.0.1:8000)
+                                                   │
+                                                   ▼
+                                     [ Python Windows Service (Option A) ]
+```
+
+- **Option A (Background Service)** runs your Python app in the background on internal port `8000`.
+- **Option B (IIS Web Server)** sits on public HTTPS port `443`. It handles the SSL security certificate, decrypts incoming traffic, and passes requests to port `8000` in milliseconds.
+
+---
+
+#### 📦 Required Software Modules (All Free from Microsoft):
+
+1. **IIS (Internet Information Services)**: Built into Windows Server (enabled via *Server Manager ➔ Add Roles and Features ➔ Web Server IIS*).
+2. **URL Rewrite Module 2.1**: Free Microsoft IIS extension that inspects incoming URLs and rewrites them internally.
+3. **Application Request Routing (ARR 3.0)**: Free Microsoft IIS extension that allows IIS to proxy HTTP traffic to internal backend ports.
+4. **Corporate SSL Certificate**: Your company's standard SSL certificate (e.g. `.pfx` or Active Directory CA certificate) to enable HTTPS.
+
+---
+
+#### ⚙️ Step-by-Step Configuration Guide:
+
+1. **Install IIS & Microsoft Modules**:
+   - Download and install [URL Rewrite 2.1](https://www.iis.net/downloads/microsoft/url-rewrite) and [ARR 3.0](https://www.iis.net/downloads/microsoft/application-request-routing).
+2. **Enable Proxying in IIS Manager**:
+   - Open **IIS Manager** (`inetmgr`).
+   - Click your Server's root node in the left pane.
+   - Double-click **Application Request Routing Cache**.
+   - In the right-hand Actions menu, click **Server Proxy Settings**.
+   - Check the box **"Enable proxy"** and click **Apply**.
+3. **Add Website & Bind SSL Certificate**:
+   - In IIS Manager, right-click **Sites** ➔ **Add Website**.
+   - **Site name**: `MeetingTranscribe`
+   - **Physical path**: `C:\meeting_minutes\frontend` (or any folder).
+   - **Binding**: Select `https`, Port `443`, Host name: `transcribe.company.local`.
+   - **SSL Certificate**: Select your corporate certificate from the dropdown list.
+4. **Create `web.config` Reverse Proxy Rule**:
+   - Place a file named `web.config` inside `C:\meeting_minutes\frontend\web.config` containing:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -159,6 +194,10 @@ To expose the application over standard HTTPS (`https://transcribe.yourcompany.c
     </system.webServer>
 </configuration>
 ```
+
+#### 💡 Why Option A + Option B Combined is Gold Standard for Windows:
+- **Option A (NSSM Service)** gives you 24/7 background execution, auto-boot on server restart, and automatic crash recovery.
+- **Option B (IIS Reverse Proxy)** gives your users trusted HTTPS security, corporate domain names, and integration with your network firewall.
 6. Bind your corporate SSL certificate to the IIS website on port 443.
 
 ---

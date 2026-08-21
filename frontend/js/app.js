@@ -108,11 +108,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Auto-select Medium model when Speaker Diarisation toggle is enabled
     if (diarizationToggle && modelSelect) {
-        diarizationToggle.addEventListener('change', () => {
+        const updateModelForDiarization = () => {
             if (diarizationToggle.checked) {
                 modelSelect.value = 'medium';
+                modelSelect.style.transition = 'all 0.3s ease';
+                modelSelect.style.borderColor = '#6366f1';
+                modelSelect.style.boxShadow = '0 0 12px rgba(99, 102, 241, 0.5)';
+                setTimeout(() => {
+                    modelSelect.style.borderColor = '';
+                    modelSelect.style.boxShadow = '';
+                }, 1200);
             }
-        });
+        };
+        diarizationToggle.addEventListener('change', updateModelForDiarization);
+        diarizationToggle.addEventListener('click', updateModelForDiarization);
     }
 
     // 3. File Selection & Drag-and-Drop

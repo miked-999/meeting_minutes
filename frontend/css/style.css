@@ -114,6 +114,11 @@ body {
     border: 1px solid var(--border-color);
 }
 
+.system-status-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
 .system-status-pill {
     display: inline-flex;
     align-items: center;
@@ -125,6 +130,72 @@ body {
     color: var(--accent-emerald);
     background: rgba(16, 185, 129, 0.08);
     border: 1px solid rgba(16, 185, 129, 0.25);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.system-status-wrapper:hover .system-status-pill {
+    border-color: rgba(16, 185, 129, 0.5);
+    background: rgba(16, 185, 129, 0.15);
+}
+
+.system-status-tooltip {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 250px;
+    padding: 10px 12px;
+    background: rgba(17, 24, 39, 0.95);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-6px);
+    transition: all 0.25s ease;
+    z-index: 100;
+    pointer-events: none;
+}
+
+.system-status-wrapper:hover .system-status-tooltip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.tooltip-skunkworks-img {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    object-fit: cover;
+    object-position: top center;
+    flex-shrink: 0;
+    border: 1px solid rgba(99, 102, 241, 0.4);
+    box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
+}
+
+.tooltip-text-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    text-align: left;
+}
+
+.tooltip-text-content strong {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
+}
+
+.tooltip-text-content span {
+    font-size: 10px;
+    color: var(--text-secondary);
+    line-height: 1.3;
 }
 
 .pulse-dot {

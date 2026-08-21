@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
-from backend.config import BASE_DIR, UPLOAD_DIR, EXPORT_DIR, ENABLE_KEYCLOAK
+from backend.config import BASE_DIR, UPLOAD_DIR, EXPORT_DIR, ENABLE_KEYCLOAK, APP_VERSION
 from backend.database import engine, get_db, Base
 from backend.models import TranscriptionJob
 from backend.worker import queue_transcription_job
@@ -44,7 +44,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Air-Gapped Meeting Transcription API",
     description="Local speech-to-text transcription engine with Word/PDF exports and Keycloak auth support.",
-    version="1.0.0",
+    version=APP_VERSION,
     lifespan=lifespan
 )
 

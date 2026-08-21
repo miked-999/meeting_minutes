@@ -21,6 +21,7 @@ COMPUTE_TYPE = os.getenv("WHISPER_COMPUTE_TYPE", "default")  # float16, int8, fl
 
 # Data Retention & Disk Cleanup Settings (Default: 7 Days)
 RETENTION_DAYS = int(os.getenv("RETENTION_DAYS", "7"))
+APP_VERSION = "1.0.0"
 
 # Authentication Settings (Keycloak)
 ENABLE_KEYCLOAK = os.getenv("ENABLE_KEYCLOAK", "false").lower() == "true"

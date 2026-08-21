@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,6 +13,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/static/css/style.css?v=1.0.3">
 </head>
+
 <body>
     <div class="app-container">
         <!-- Top Header Navigation -->
@@ -25,7 +27,7 @@
                     <span class="subtext">Speech to Text</span>
                 </div>
             </div>
-            
+
             <div class="header-badges">
                 <div class="system-status-wrapper">
                     <span class="system-status-pill">
@@ -33,10 +35,11 @@
                     </span>
                     <!-- Discrete Hover Tooltip -->
                     <div class="system-status-tooltip">
-                        <img src="/static/assets/skunkworks_logo.jpg" alt="AI Skunkworks Logo" class="tooltip-skunkworks-img">
+                        <img src="/static/assets/skunkworks_logo.jpg" alt="AI Skunkworks Logo"
+                            class="tooltip-skunkworks-img">
                         <div class="tooltip-text-content">
                             <strong>Meeting Transcribe v1.0.1</strong>
-                            <span>Developed using AI</span>
+                            <span> Developed using AI</span>
                             <span class="tooltip-author">Michael Doig</span>
                         </div>
                     </div>
@@ -67,13 +70,15 @@
 
                     <!-- Drag & Drop Zone -->
                     <div id="drop-zone" class="drop-zone">
-                        <input type="file" id="file-input" accept="audio/*,video/*,.mp4,.mkv,.avi,.mov,.webm,.mp3,.wav,.m4a,.flac,.aac" hidden>
+                        <input type="file" id="file-input"
+                            accept="audio/*,video/*,.mp4,.mkv,.avi,.mov,.webm,.mp3,.wav,.m4a,.flac,.aac" hidden>
                         <div class="drop-zone-content">
                             <div class="upload-icon-wrapper">
                                 <i class="fa-solid fa-file-arrow-up"></i>
                             </div>
                             <h3>Drag & drop meeting file here</h3>
-                            <p class="browse-text">or <span class="highlight-link">browse files</span> from your computer</p>
+                            <p class="browse-text">or <span class="highlight-link">browse files</span> from your
+                                computer</p>
                             <span class="file-limits">Supports MP4, MKV, MP3, M4A, WAV & more (Up to 90+ mins)</span>
                         </div>
                     </div>
@@ -110,7 +115,8 @@
                                 <span><i class="fa-solid fa-users-between-lines"></i> Speaker Diarisation</span>
                                 <span class="badge experimental-badge">EXPERIMENTAL</span>
                             </label>
-                            <div class="toggle-wrapper" style="padding: 8px 12px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+                            <div class="toggle-wrapper"
+                                style="padding: 8px 12px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
                                 <label class="toggle-switch">
                                     <input type="checkbox" id="diarization-toggle">
                                     <span class="slider round"></span>
@@ -137,7 +143,8 @@
                     <div id="queue-drawer" class="queue-drawer hidden">
                         <button id="queue-toggle-btn" class="queue-toggle-btn" type="button">
                             <span class="queue-toggle-title">
-                                <i class="fa-solid fa-list-ol"></i> Up Next in Queue (<strong id="queue-count">0</strong>)
+                                <i class="fa-solid fa-list-ol"></i> Up Next in Queue (<strong
+                                    id="queue-count">0</strong>)
                             </span>
                             <i id="queue-chevron" class="fa-solid fa-chevron-down"></i>
                         </button>
@@ -247,7 +254,8 @@
                         </label>
                         <div class="search-box">
                             <i class="fa-solid fa-magnifying-glass search-icon"></i>
-                            <input type="text" id="history-search" class="form-input search-input" placeholder="Search transcripts...">
+                            <input type="text" id="history-search" class="form-input search-input"
+                                placeholder="Search transcripts...">
                         </div>
                         <button id="refresh-history-btn" class="btn btn-secondary" title="Refresh List">
                             <i class="fa-solid fa-rotate-right"></i> Refresh
@@ -258,7 +266,8 @@
                 <!-- Discrete Session Retention Warning Banner -->
                 <div class="session-warning-banner">
                     <i class="fa-solid fa-circle-info warning-icon"></i>
-                    <span><strong>Session Notice:</strong> Results are linked to your browser session. Please download the files you need promptly, as past results may not be retained permanently.</span>
+                    <span><strong>Session Notice:</strong> Results are linked to your browser session. Please download
+                        the files you need promptly, as past results may not be retained permanently.</span>
                 </div>
 
                 <!-- History Table / Card Container -->
@@ -284,7 +293,7 @@
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
-            
+
             <div class="modal-actions-bar">
                 <div class="btn-group">
                     <a id="modal-dl-docx" href="#" class="btn btn-export btn-docx">
@@ -307,4 +316,5 @@
 
     <script src="/static/js/app.js?v=1.0.1"></script>
 </body>
+
 </html>

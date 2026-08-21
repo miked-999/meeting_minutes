@@ -19,6 +19,9 @@ DEFAULT_WHISPER_MODEL = os.getenv("WHISPER_MODEL", "small")  # Options: tiny, sm
 DEVICE = os.getenv("WHISPER_DEVICE", "auto")  # Options: auto, cpu, cuda
 COMPUTE_TYPE = os.getenv("WHISPER_COMPUTE_TYPE", "default")  # float16, int8, float32, default
 
+# Data Retention & Disk Cleanup Settings (Default: 7 Days)
+RETENTION_DAYS = int(os.getenv("RETENTION_DAYS", "7"))
+
 # Authentication Settings (Keycloak)
 ENABLE_KEYCLOAK = os.getenv("ENABLE_KEYCLOAK", "false").lower() == "true"
 KEYCLOAK_URL = os.getenv("KEYCLOAK_URL", "http://localhost:8080/realms/master")

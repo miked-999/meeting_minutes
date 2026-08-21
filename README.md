@@ -40,6 +40,18 @@ Open your browser to: **`http://localhost:8000`**
 
 ---
 
+## 🧹 Data Retention & Disk Cleanup
+
+The app automatically executes disk cleanup on server startup and supports standalone CLI / API triggers:
+- **Default Retention**: Purges files and jobs older than **7 days** (configurable via environment variable `RETENTION_DAYS=7`).
+- **Standalone CLI Script**:
+  ```bash
+  ./venv/bin/python cleanup.py --days 7
+  ```
+- **Admin API Endpoint**: `DELETE /api/admin/cleanup?days=7`
+
+---
+
 ## 🧪 Running Automated Tests
 
 Run the full pytest suite:

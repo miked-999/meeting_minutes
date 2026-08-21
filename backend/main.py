@@ -33,6 +33,12 @@ async def lifespan(app: FastAPI):
         recover_pending_queue()
     except Exception as e:
         logger.warning(f"Startup queue recovery failed: {e}")
+
+    try:
+        from backend.cleanup import cleanup_expired_jobs
+        cleanup_expired_jobs()
+    except Exception as e:
+        logger.warning(f"Startup disk cleanup failed: {e}")
     yield
 
 app = FastAPI(
@@ -334,6 +340,19 @@ def get_audit_logs(db: Session = Depends(get_db), current_user: dict = Depends(g
         },
         "logs": [l.to_dict() for l in logs]
     }
+
+@app.delete("/api/admin/cleanup")
+def trigger_cleanup(
+    days: Optional[int] = None,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Trigger manual data retention cleanup for files and jobs older than specified days."""
+    from backend.cleanup import cleanup_expired_jobs
+    from backend.config import RETENTION_DAYS
+    max_days = days if days is not None and days >= 0 else RETENTION_DAYS
+    res = cleanup_expired_jobs(max_age_days=max_days, db_session=db)
+    return res
 
 # Serve static frontend UI
 frontend_dir = BASE_DIR / "frontend"

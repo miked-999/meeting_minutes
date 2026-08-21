@@ -63,5 +63,6 @@ Run the full pytest suite:
 
 ## 📚 Documentation Suite
 
+- [README_WIN.md](file:///Users/michael/meeting_minutes/README_WIN.md): Complete Windows Server 2016/2019/2022 & Windows 10/11 production deployment manual (NSSM Windows Service + IIS Reverse Proxy).
 - [ARCHITECTURE.md](file:///Users/michael/meeting_minutes/ARCHITECTURE.md): System architecture, REST API specification, database schema, and SpeechBrain ECAPA-TDNN neural design.
 - [USER_GUIDE.md](file:///Users/michael/meeting_minutes/USER_GUIDE.md): Complete end-user manual and feature walkthrough.

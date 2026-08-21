@@ -44,6 +44,12 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="about-status-wrapper">
+                    <button id="about-btn" class="system-status-pill about-pill" title="View Tool Overview & Guide">
+                        <i class="fa-solid fa-circle-info"></i> About
+                    </button>
+                </div>
             </div>
         </header>
 
@@ -319,7 +325,79 @@
         </div>
     </div>
 
-    <script src="/static/js/app.js?v=1.0.1"></script>
+    <!-- About & User Guide Modal Overlay -->
+    <div id="about-modal" class="modal-backdrop hidden">
+        <div class="modal-content about-modal-content">
+            <div class="modal-header">
+                <div class="about-header-title">
+                    <img src="/static/assets/skunkworks_logo.jpg" alt="AI Skunkworks Emblem" class="about-modal-logo">
+                    <div>
+                        <h3>Meeting Transcribe</h3>
+                        <span class="subtext">Air-Gapped Speech-to-Text & Speaker Diarisation v1.0.0</span>
+                    </div>
+                </div>
+                <button id="close-about-modal-btn" class="btn-icon" title="Close About Overlay">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="modal-body about-modal-body">
+                <section class="about-section">
+                    <h4><i class="fa-solid fa-shield-halved text-indigo"></i> Tool Overview & Purpose</h4>
+                    <p>
+                        <strong>Meeting Transcribe</strong> is an air-gapped, privacy-first meeting transcription application designed to convert audio and video recordings into structured text, Word (.docx) documents, and PDFs 100% locally.
+                    </p>
+                    <p>
+                        Powered by <strong>faster-whisper</strong> (CTranslate2) and <strong>SpeechBrain ECAPA-TDNN</strong> speaker diarization, all processing occurs directly on your CPU without transmitting any data over external networks or third-party APIs.
+                    </p>
+                </section>
+
+                <section class="about-section">
+                    <h4><i class="fa-solid fa-book-open text-indigo"></i> Simple User Guide</h4>
+                    <div class="guide-steps-grid">
+                        <div class="guide-step-card">
+                            <div class="step-num">1</div>
+                            <div class="step-details">
+                                <strong>Upload Media File</strong>
+                                <p>Drag & drop or browse an audio or video file (MP4, MKV, MP3, WAV, M4A, FLAC, etc.) up to 90+ minutes.</p>
+                            </div>
+                        </div>
+
+                        <div class="guide-step-card">
+                            <div class="step-num">2</div>
+                            <div class="step-details">
+                                <strong>Select Options & Diarization</strong>
+                                <p>Choose STT model size (<code>small</code> for speed, <code>medium</code> for higher accuracy). Enable <strong>Speaker Diarisation</strong> to auto-cluster distinct speakers.</p>
+                            </div>
+                        </div>
+
+                        <div class="guide-step-card">
+                            <div class="step-num">3</div>
+                            <div class="step-details">
+                                <strong>Track & Stop Progress</strong>
+                                <p>Watch real-time transcription segment streaming. Stop or cancel an in-progress job anytime using the <strong>Cancel</strong> button.</p>
+                            </div>
+                        </div>
+
+                        <div class="guide-step-card">
+                            <div class="step-num">4</div>
+                            <div class="step-details">
+                                <strong>View & Export Documents</strong>
+                                <p>Download generated transcripts in <strong>Word (.docx)</strong>, <strong>PDF</strong>, <strong>TXT</strong>, or <strong>SRT Subtitle</strong> formats with optional timestamp toggles.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="about-section about-footer-note">
+                    <p><i class="fa-solid fa-lock"></i> <strong>Privacy & Security Notice:</strong> Source files are automatically deleted upon processing completion. Jobs are isolated per browser session and automatically purged based on retention policies.</p>
+                    <p style="margin-top: 6px; font-size: 11px; color: var(--text-muted);">Developed using AI by <strong>Michael Doig</strong> | AI Skunkworks Team</p>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js?v=1.0.3"></script>
 </body>
 
 </html>

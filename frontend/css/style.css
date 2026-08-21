@@ -139,6 +139,24 @@ body {
     background: rgba(16, 185, 129, 0.15);
 }
 
+.about-status-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.about-pill {
+    color: #a5b4fc;
+    background: rgba(99, 102, 241, 0.12);
+    border: 1px solid rgba(99, 102, 241, 0.35);
+}
+
+.about-pill:hover {
+    color: #ffffff;
+    background: rgba(99, 102, 241, 0.25);
+    border-color: rgba(99, 102, 241, 0.6);
+    box-shadow: 0 0 14px rgba(99, 102, 241, 0.4);
+}
+
 .system-status-tooltip {
     position: absolute;
     top: calc(100% + 8px);
@@ -1041,4 +1059,119 @@ input:checked + .slider:before {
 
 .session-warning-banner strong {
     color: var(--text-primary);
+}
+
+/* About Modal Styling */
+.about-modal-content {
+    max-width: 680px;
+    width: 92%;
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.about-header-title {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.about-modal-logo {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    object-fit: cover;
+    border: 1px solid rgba(99, 102, 241, 0.45);
+    box-shadow: 0 0 12px rgba(99, 102, 241, 0.3);
+}
+
+.about-modal-body {
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.about-section {
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 16px 18px;
+}
+
+.about-section h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.about-section p {
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 8px;
+}
+
+.about-section p:last-child {
+    margin-bottom: 0;
+}
+
+.guide-steps-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.guide-step-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 12px 14px;
+}
+
+.guide-step-card .step-num {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: rgba(99, 102, 241, 0.2);
+    color: var(--accent-indigo);
+    border: 1px solid rgba(99, 102, 241, 0.4);
+    font-weight: 700;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.guide-step-card .step-details strong {
+    display: block;
+    font-size: 12.5px;
+    color: var(--text-primary);
+    margin-bottom: 3px;
+}
+
+.guide-step-card .step-details p {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    line-height: 1.45;
+    margin-bottom: 0;
+}
+
+.about-footer-note {
+    background: rgba(99, 102, 241, 0.08);
+    border-color: rgba(99, 102, 241, 0.25);
+}
+
+.text-indigo {
+    color: var(--accent-indigo);
 }

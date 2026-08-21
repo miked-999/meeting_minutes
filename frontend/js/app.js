@@ -636,6 +636,40 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target === transcriptModal) transcriptModal.classList.add('hidden');
     });
 
+    // 9. About Modal Controls
+    const aboutBtn = document.getElementById('about-btn');
+    const aboutModal = document.getElementById('about-modal');
+    const closeAboutModalBtn = document.getElementById('close-about-modal-btn');
+
+    if (aboutBtn && aboutModal) {
+        aboutBtn.addEventListener('click', () => {
+            aboutModal.classList.remove('hidden');
+        });
+    }
+
+    if (closeAboutModalBtn && aboutModal) {
+        closeAboutModalBtn.addEventListener('click', () => {
+            aboutModal.classList.add('hidden');
+        });
+    }
+
+    if (aboutModal) {
+        aboutModal.addEventListener('click', (e) => {
+            if (e.target === aboutModal) aboutModal.classList.add('hidden');
+        });
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            if (transcriptModal && !transcriptModal.classList.contains('hidden')) {
+                transcriptModal.classList.add('hidden');
+            }
+            if (aboutModal && !aboutModal.classList.contains('hidden')) {
+                aboutModal.classList.add('hidden');
+            }
+        }
+    });
+
     // 8. Robust In-Line Delete Confirmation
     window.confirmDeleteJob = function(btnElement, jobId) {
         if (btnElement.getAttribute('data-confirming') === 'true') {

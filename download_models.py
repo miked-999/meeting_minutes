@@ -1,6 +1,8 @@
-#!/usr/bin/env python3
+import os
 import sys
 from pathlib import Path
+
+os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 # pyrefly: ignore [missing-import]
 from faster_whisper import WhisperModel
 from backend.config import MODELS_DIR

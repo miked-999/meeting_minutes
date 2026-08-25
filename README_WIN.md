@@ -79,6 +79,12 @@ Before putting the application into an air-gapped or production environment, pre
 - **Output**: Models will be downloaded into `C:\meeting_minutes\models_cache`.
 - Once downloaded, the application runs **100% offline with zero internet access required**.
 
+> [!NOTE]
+> **Windows `WinError 1314` Permission Notice:**  
+> SpeechBrain and Hugging Face Hub use file symlinks by default. If you receive `WinError 1314: A required privilege is not held by the client`, either:
+> 1. Run PowerShell **as Administrator**, OR
+> 2. Enable **Developer Mode** in Windows (*Settings ➔ Update & Security ➔ For developers ➔ Developer Mode ON*).
+
 ---
 
 ## 🧪 Step 4: Verification & Manual Testing

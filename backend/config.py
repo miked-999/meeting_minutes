@@ -1,6 +1,9 @@
 import os
 from pathlib import Path
 
+# Disable Hugging Face symlink warnings/errors on Windows
+os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Storage Directories

@@ -14,7 +14,11 @@ def download_ecapa():
     save_dir = str(MODELS_DIR / "spkrec-ecapa-voxceleb")
     print(f"Downloading SpeechBrain ECAPA-TDNN speaker recognition model to {save_dir}...")
     try:
-        from speechbrain.inference.speaker import EncoderClassifier
+        try:
+            from speechbrain.inference.speaker import EncoderClassifier
+        except (ImportError, AttributeError, ModuleNotFoundError):
+            from speechbrain.pretrained import EncoderClassifier
+
         EncoderClassifier.from_hparams(
             source="speechbrain/spkrec-ecapa-voxceleb",
             savedir=save_dir,

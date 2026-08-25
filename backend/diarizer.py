@@ -19,7 +19,10 @@ def get_speaker_classifier():
         return _SPEAKER_CLASSIFIER
 
     try:
-        from speechbrain.inference.speaker import EncoderClassifier
+        try:
+            from speechbrain.inference.speaker import EncoderClassifier
+        except (ImportError, AttributeError, ModuleNotFoundError):
+            from speechbrain.pretrained import EncoderClassifier
 
         save_dir = str(MODELS_DIR / "spkrec-ecapa-voxceleb")
         logger.info(f"Loading SpeechBrain ECAPA-TDNN speaker embedding model from {save_dir}...")

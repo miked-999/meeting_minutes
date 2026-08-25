@@ -5,6 +5,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let activeJobId = null;
     let pollingInterval = null;
     let allJobs = [];
+    let lastRenderedJobId = null;
+    let lastRenderedHtml = '';
 
     // Session ID Initialization for Anonymous Browser Privacy (localStorage per browser)
     let appSessionId = localStorage.getItem('meeting_transcribe_session_id');
@@ -424,19 +426,25 @@ document.addEventListener('DOMContentLoaded', () => {
         // Update Live Transcript Stream
         if (!isOwnSession) {
             segmentCountEl.textContent = `Private`;
-            liveTranscriptText.innerHTML = `
+            const privateHtml = `
                 <div style="padding: 16px 12px; text-align: center;">
                     <i class="fa-solid fa-lock" style="font-size: 22px; color: var(--accent-indigo); margin-bottom: 6px;"></i>
                     <p style="font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 2px;">Live Transcript Stream Hidden</p>
                     <p style="font-size: 11px; color: var(--text-muted);">This file is currently processing on the server from another session. Title & progress are visible above.</p>
                 </div>`;
+            if (lastRenderedHtml !== privateHtml || lastRenderedJobId !== job.id) {
+                liveTranscriptText.innerHTML = privateHtml;
+                lastRenderedHtml = privateHtml;
+                lastRenderedJobId = job.id;
+            }
             activeDownloadsBar.classList.add('hidden');
             return;
         }
 
+        let newTranscriptHtml = '';
         if (job.segments && job.segments.length > 0) {
             segmentCountEl.textContent = `${job.segments.length} Segments`;
-            liveTranscriptText.innerHTML = job.segments.map(s => {
+            newTranscriptHtml = job.segments.map(s => {
                 const showSpeaker = Boolean(s.speaker);
                 const spkHtml = showSpeaker ? `<span class="speaker-tag ${s.speaker.toLowerCase().replace(/\s+/g, '-')}">${escapeHtml(s.speaker)}</span>` : '';
                 return `
@@ -447,11 +455,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
             }).join('');
-            liveTranscriptText.scrollTop = liveTranscriptText.scrollHeight;
         } else if (job.status === 'TRANSCRIBING') {
-            liveTranscriptText.innerHTML = `<em>Transcribing speech segments...</em>`;
+            newTranscriptHtml = `<em>Transcribing speech segments...</em>`;
         } else if (job.status === 'FAILED') {
-            liveTranscriptText.innerHTML = `<em style="color: var(--accent-rose);">Error: ${escapeHtml(job.error_message || 'Transcription failed.')}</em>`;
+            newTranscriptHtml = `<em style="color: var(--accent-rose);">Error: ${escapeHtml(job.error_message || 'Transcription failed.')}</em>`;
+        }
+
+        if (newTranscriptHtml) {
+            const isNewJob = (lastRenderedJobId !== job.id);
+            const isContentChanged = (lastRenderedHtml !== newTranscriptHtml);
+
+            if (isNewJob || isContentChanged) {
+                const isNearBottom = (liveTranscriptText.scrollHeight - liveTranscriptText.scrollTop - liveTranscriptText.clientHeight) < 60;
+                const isStreaming = ['QUEUED', 'CONVERTING', 'TRANSCRIBING', 'DIARIZING'].includes(job.status);
+
+                liveTranscriptText.innerHTML = newTranscriptHtml;
+                lastRenderedHtml = newTranscriptHtml;
+                lastRenderedJobId = job.id;
+
+                if (isNewJob || (isStreaming && isNearBottom)) {
+                    liveTranscriptText.scrollTop = liveTranscriptText.scrollHeight;
+                }
+            }
         }
 
         // Show download buttons if complete

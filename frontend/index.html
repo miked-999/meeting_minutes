@@ -248,6 +248,9 @@
                                     <i class="fa-solid fa-closed-captioning"></i> Subtitle (.srt)
                                 </a>
                             </div>
+                            <button id="active-label-speakers-btn" class="btn btn-secondary hidden" style="margin-top: 12px; width: 100%;">
+                                <i class="fa-solid fa-users-gear"></i> Identify / Rename Speakers
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -311,7 +314,7 @@
                 </button>
             </div>
 
-            <div class="modal-actions-bar">
+            <div class="modal-actions-bar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                 <div class="btn-group">
                     <a id="modal-dl-docx" href="#" class="btn btn-export btn-docx">
                         <i class="fa-solid fa-file-word"></i> Download .docx
@@ -323,10 +326,39 @@
                         <i class="fa-solid fa-file-lines"></i> Plain Text
                     </a>
                 </div>
+                <button id="modal-label-speakers-btn" class="btn btn-secondary hidden">
+                    <i class="fa-solid fa-users-gear"></i> Identify / Rename Speakers
+                </button>
             </div>
 
             <div id="modal-body-text" class="modal-body">
                 <!-- Transcript content populated dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Interactive Speaker Labeling Modal -->
+    <div id="speaker-labeling-modal" class="modal-backdrop hidden">
+        <div class="modal-content" style="max-width: 650px; width: 92%;">
+            <div class="modal-header">
+                <div>
+                    <h3><i class="fa-solid fa-users-gear" style="color: var(--accent-indigo);"></i> Identify Speakers by Name</h3>
+                    <span class="subtext">Listen to sample audio clips for each speaker and assign custom names.</span>
+                </div>
+                <button id="close-speaker-modal-btn" class="btn-icon">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div id="speaker-labeling-body" class="modal-body" style="padding: 16px 20px; max-height: 60vh; overflow-y: auto;">
+                <!-- Dynamically populated cards per speaker -->
+            </div>
+
+            <div class="modal-footer" style="padding: 14px 20px; display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--border-color); background: var(--bg-secondary); border-radius: 0 0 var(--radius-md) var(--radius-md);">
+                <button id="cancel-speaker-modal-btn" class="btn btn-secondary">Cancel</button>
+                <button id="save-speaker-names-btn" class="btn btn-primary">
+                    <i class="fa-solid fa-check"></i> Save & Update Transcript
+                </button>
             </div>
         </div>
     </div>

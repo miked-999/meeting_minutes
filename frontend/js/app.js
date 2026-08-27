@@ -487,6 +487,16 @@ document.addEventListener('DOMContentLoaded', () => {
             dlPdfBtn.href = `/api/jobs/${job.id}/download/pdf${tsParam}`;
             dlTxtBtn.href = `/api/jobs/${job.id}/download/txt${tsParam}`;
             dlSrtBtn.href = `/api/jobs/${job.id}/download/srt`;
+
+            const activeLabelBtn = document.getElementById('active-label-speakers-btn');
+            if (activeLabelBtn) {
+                if (job.enable_diarization && job.segments && job.segments.some(s => Boolean(s.speaker))) {
+                    activeLabelBtn.classList.remove('hidden');
+                    activeLabelBtn.onclick = () => openSpeakerLabelingModal(job.id);
+                } else {
+                    activeLabelBtn.classList.add('hidden');
+                }
+            }
         } else {
             activeDownloadsBar.classList.add('hidden');
         }
@@ -637,6 +647,19 @@ document.addEventListener('DOMContentLoaded', () => {
         modalDlPdf.href = `/api/jobs/${job.id}/download/pdf`;
         modalDlTxt.href = `/api/jobs/${job.id}/download/txt`;
 
+        const modalLabelBtn = document.getElementById('modal-label-speakers-btn');
+        if (modalLabelBtn) {
+            if (job.enable_diarization && job.segments && job.segments.some(s => Boolean(s.speaker))) {
+                modalLabelBtn.classList.remove('hidden');
+                modalLabelBtn.onclick = () => {
+                    transcriptModal.classList.add('hidden');
+                    openSpeakerLabelingModal(job.id);
+                };
+            } else {
+                modalLabelBtn.classList.add('hidden');
+            }
+        }
+
         if (job.segments && job.segments.length > 0) {
             modalBodyText.innerHTML = job.segments.map(s => {
                 const showSpeaker = Boolean(s.speaker);
@@ -782,4 +805,168 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initial History Fetch
     loadHistory();
+
+    // 10. Interactive Speaker Labeling Logic
+    let speakerLabelingJobId = null;
+    let speakerClipIndices = {};
+    let speakerSegmentsMap = {};
+
+    const speakerLabelingModal = document.getElementById('speaker-labeling-modal');
+    const speakerLabelingBody = document.getElementById('speaker-labeling-body');
+    const closeSpeakerModalBtn = document.getElementById('close-speaker-modal-btn');
+    const cancelSpeakerModalBtn = document.getElementById('cancel-speaker-modal-btn');
+    const saveSpeakerNamesBtn = document.getElementById('save-speaker-names-btn');
+
+    window.openSpeakerLabelingModal = function(jobId) {
+        let job = allJobs.find(j => j.id === jobId);
+        if (!job || !job.segments) return;
+
+        speakerLabelingJobId = jobId;
+        speakerClipIndices = {};
+        speakerSegmentsMap = {};
+
+        job.segments.forEach(s => {
+            if (s.speaker) {
+                const spk = s.speaker;
+                if (!speakerSegmentsMap[spk]) {
+                    speakerSegmentsMap[spk] = [];
+                    speakerClipIndices[spk] = 0;
+                }
+                speakerSegmentsMap[spk].push(s);
+            }
+        });
+
+        const speakerList = Object.keys(speakerSegmentsMap);
+        if (speakerList.length === 0) {
+            alert('No speaker segments found to rename.');
+            return;
+        }
+
+        speakerLabelingBody.innerHTML = speakerList.map(spk => {
+            const segs = speakerSegmentsMap[spk];
+            const totalClips = segs.length;
+            const spkClass = spk.toLowerCase().replace(/\s+/g, '-');
+            const safeSpk = escapeHtml(spk);
+            const encodedSpk = encodeURIComponent(spk);
+
+            return `
+                <div class="speaker-card" style="background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 14px;">
+                    <div class="flex-between" style="margin-bottom: 10px;">
+                        <span class="speaker-tag ${spkClass}" style="font-weight: 600; font-size: 13px;">${safeSpk}</span>
+                        <span class="badge-mini" style="color: var(--text-muted);">${totalClips} Audio ${totalClips === 1 ? 'Sample' : 'Samples'}</span>
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <audio id="audio-player-${encodedSpk}" controls style="width: 100%; height: 38px;" src="/api/jobs/${jobId}/speakers/${encodedSpk}/audio-clip?clip_index=0"></audio>
+                    </div>
+                    <div class="flex-between" style="gap: 12px; align-items: center; flex-wrap: wrap;">
+                        <button type="button" class="btn btn-secondary" style="font-size: 12px; padding: 6px 10px;" onclick="cycleSpeakerClip('${encodedSpk}', 1)">
+                            <i class="fa-solid fa-forward"></i> Try Another Sample (<span id="clip-num-${encodedSpk}">1</span>/${totalClips})
+                        </button>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label style="font-size: 12px; color: var(--text-muted);">Name:</label>
+                            <input type="text" id="speaker-input-${encodedSpk}" class="form-input speaker-name-input" placeholder="e.g. Alice Smith" value="${safeSpk.startsWith('Speaker ') ? '' : safeSpk}" style="width: 200px; font-size: 12px; padding: 5px 8px;">
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        speakerLabelingModal.classList.remove('hidden');
+    };
+
+    window.cycleSpeakerClip = function(encodedSpk, delta) {
+        const spk = decodeURIComponent(encodedSpk);
+        const segs = speakerSegmentsMap[spk];
+        if (!segs || segs.length === 0) return;
+
+        const totalClips = segs.length;
+        speakerClipIndices[spk] = ((speakerClipIndices[spk] || 0) + delta + totalClips) % totalClips;
+
+        const clipIdx = speakerClipIndices[spk];
+        const audioEl = document.getElementById(`audio-player-${encodedSpk}`);
+        const numEl = document.getElementById(`clip-num-${encodedSpk}`);
+
+        if (audioEl) {
+            audioEl.src = `/api/jobs/${speakerLabelingJobId}/speakers/${encodedSpk}/audio-clip?clip_index=${clipIdx}`;
+            audioEl.load();
+            audioEl.play().catch(() => {});
+        }
+        if (numEl) {
+            numEl.textContent = clipIdx + 1;
+        }
+    };
+
+    function closeSpeakerModal() {
+        if (speakerLabelingModal) {
+            speakerLabelingModal.classList.add('hidden');
+            const audios = speakerLabelingBody.querySelectorAll('audio');
+            audios.forEach(a => a.pause());
+        }
+    }
+
+    if (closeSpeakerModalBtn) closeSpeakerModalBtn.addEventListener('click', closeSpeakerModal);
+    if (cancelSpeakerModalBtn) cancelSpeakerModalBtn.addEventListener('click', closeSpeakerModal);
+    if (speakerLabelingModal) {
+        speakerLabelingModal.addEventListener('click', (e) => {
+            if (e.target === speakerLabelingModal) closeSpeakerModal();
+        });
+    }
+
+    if (saveSpeakerNamesBtn) {
+        saveSpeakerNamesBtn.addEventListener('click', async () => {
+            if (!speakerLabelingJobId) return;
+
+            const speaker_map = {};
+            Object.keys(speakerSegmentsMap).forEach(spk => {
+                const encodedSpk = encodeURIComponent(spk);
+                const inputEl = document.getElementById(`speaker-input-${encodedSpk}`);
+                if (inputEl) {
+                    const val = inputEl.value.trim();
+                    if (val && val !== spk) {
+                        speaker_map[spk] = val;
+                    }
+                }
+            });
+
+            if (Object.keys(speaker_map).length === 0) {
+                closeSpeakerModal();
+                return;
+            }
+
+            saveSpeakerNamesBtn.disabled = true;
+            saveSpeakerNamesBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving...`;
+
+            try {
+                const res = await fetchWithSession(`/api/jobs/${speakerLabelingJobId}/rename-speakers`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ speaker_map })
+                });
+
+                if (res.ok) {
+                    const updatedJob = await res.json();
+                    
+                    const idx = allJobs.findIndex(j => j.id === updatedJob.id);
+                    if (idx !== -1) {
+                        allJobs[idx] = updatedJob;
+                    }
+
+                    if (activeJobId === updatedJob.id) {
+                        updateActiveJobUI(updatedJob);
+                    }
+
+                    renderHistoryItems(allJobs);
+                    closeSpeakerModal();
+                } else {
+                    const err = await res.json();
+                    alert(`Failed to rename speakers: ${err.detail || 'Server error'}`);
+                }
+            } catch (e) {
+                alert(`Error saving speaker names: ${e.message}`);
+            } finally {
+                saveSpeakerNamesBtn.disabled = false;
+                saveSpeakerNamesBtn.innerHTML = `<i class="fa-solid fa-check"></i> Save & Update Transcript`;
+            }
+        });
+    }
 });

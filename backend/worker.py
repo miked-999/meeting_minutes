@@ -201,14 +201,9 @@ def process_job(job_id: str):
         except Exception as cleanup_err:
             logger.warning(f"Error auto-deleting stored media: {cleanup_err}")
 
-        try:
-            if job.converted_filename:
-                conv_file_path = CONVERTED_DIR / job.converted_filename
-                if conv_file_path.exists():
-                    conv_file_path.unlink()
-                    logger.info(f"Auto-deleted converted WAV file {conv_file_path}")
-        except Exception as cleanup_err:
-            logger.warning(f"Error auto-deleting converted WAV: {cleanup_err}")
+        # Converted WAV file is retained in CONVERTED_DIR during session retention
+        # so interactive speaker audio sample clips can be sliced on demand.
+        # Cleanup will occur when the job retention expires or job is deleted via cleanup.py.
 
         db.close()
 

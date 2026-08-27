@@ -1,12 +1,13 @@
 import uuid
+import json
 import shutil
 import logging
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 from pydantic import BaseModel
 from fastapi import FastAPI, File, UploadFile, Form, Depends, HTTPException, status, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -56,6 +57,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+class SpeakerRenameRequest(BaseModel):
+    speaker_map: Dict[str, str]
 
 # API Routes
 
@@ -381,6 +385,122 @@ def get_audit_logs(db: Session = Depends(get_db), current_user: dict = Depends(g
         },
         "logs": [l.to_dict() for l in logs]
     }
+
+@app.get("/api/jobs/{job_id}/speakers/{speaker_name}/audio-clip")
+def get_speaker_audio_clip(
+    job_id: str,
+    speaker_name: str,
+    clip_index: int = 0,
+    request: Request = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Returns a sliced WAV audio clip of the specified speaker from the converted WAV file.
+    `clip_index` allows cycling through different audio segments spoken by this speaker.
+    """
+    session_id = extract_session_id(request) if request else None
+    job = db.query(TranscriptionJob).filter(TranscriptionJob.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if session_id and job.session_id and job.session_id != session_id:
+        raise HTTPException(status_code=403, detail="Access denied to this session resource")
+
+    if not job.transcript_json:
+        raise HTTPException(status_code=404, detail="No transcript segments found for this job")
+
+    try:
+        segments = json.loads(job.transcript_json)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Invalid transcript format")
+
+    speaker_segments = [s for s in segments if s.get("speaker") and s.get("speaker").strip().lower() == speaker_name.strip().lower()]
+    if not speaker_segments:
+        raise HTTPException(status_code=404, detail=f"No audio segments found for speaker '{speaker_name}'")
+
+    clip_idx = clip_index % len(speaker_segments)
+    target_seg = speaker_segments[clip_idx]
+
+    from backend.config import CONVERTED_DIR
+    conv_file_path = CONVERTED_DIR / f"{job.id}.wav"
+    if not conv_file_path.exists() and job.converted_filename:
+        conv_file_path = CONVERTED_DIR / job.converted_filename
+
+    if not conv_file_path.exists():
+        raise HTTPException(status_code=404, detail="Source audio file not available on server")
+
+    from backend.audio_slicer import extract_wav_clip
+    try:
+        clip_bytes = extract_wav_clip(conv_file_path, target_seg.get("start", 0.0), target_seg.get("end", 0.0))
+        return Response(content=clip_bytes, media_type="audio/wav")
+    except Exception as e:
+        logger.error(f"Error slicing audio clip: {e}")
+        raise HTTPException(status_code=500, detail="Failed to slice audio clip")
+
+
+@app.post("/api/jobs/{job_id}/rename-speakers")
+def rename_speakers(
+    job_id: str,
+    payload: SpeakerRenameRequest,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """
+    Renames generic speaker tags (e.g., 'Speaker 1') to custom user-provided names across the job's transcript.
+    """
+    session_id = extract_session_id(request)
+    job = db.query(TranscriptionJob).filter(TranscriptionJob.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if session_id and job.session_id and job.session_id != session_id:
+        raise HTTPException(status_code=403, detail="Access denied to this session resource")
+
+    if not job.transcript_json:
+        raise HTTPException(status_code=400, detail="No transcript segments available to rename")
+
+    try:
+        segments = json.loads(job.transcript_json)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Invalid transcript format")
+
+    speaker_map = payload.speaker_map
+    if not speaker_map or not isinstance(speaker_map, dict):
+        raise HTTPException(status_code=400, detail="speaker_map dictionary is required")
+
+    for seg in segments:
+        orig_spk = seg.get("speaker")
+        if orig_spk and orig_spk in speaker_map:
+            new_name = speaker_map[orig_spk].strip()
+            if new_name:
+                seg["speaker"] = new_name
+
+    job.transcript_json = json.dumps(segments)
+
+    # Re-generate full_text
+    full_text_lines = []
+    for s in segments:
+        spk = s.get("speaker")
+        spk_str = f"{spk}: " if spk else ""
+        full_text_lines.append(f"{spk_str}{s.get('text', '').strip()}")
+    job.full_text = "\n".join(full_text_lines)
+
+    db.commit()
+    db.refresh(job)
+
+    # Invalidate cached exports for this job so downloads reflect the updated speaker names
+    from backend.config import EXPORT_DIR
+    for fmt in ["docx", "pdf", "txt", "srt"]:
+        for ts_suffix in ["", "_ts"]:
+            fpath = EXPORT_DIR / f"transcript_{job.id}{ts_suffix}.{fmt}"
+            if fpath.exists():
+                try:
+                    fpath.unlink()
+                except Exception:
+                    pass
+
+    return job.to_dict(db_session=db)
+
 
 @app.delete("/api/admin/cleanup")
 def trigger_cleanup(

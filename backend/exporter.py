@@ -48,6 +48,58 @@ def format_srt_timestamp(seconds: float) -> str:
     millis = int((seconds - total_seconds) * 1000)
     return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
 
+def group_segments_by_speaker(segments: list, is_diarized: bool = False) -> list:
+    """
+    Groups consecutive segments spoken by the same speaker into single speaker turns.
+    """
+    if not segments:
+        return []
+
+    if not is_diarized:
+        return [
+            {
+                "speaker": None,
+                "start": seg.get("start", 0.0),
+                "end": seg.get("end", 0.0),
+                "text": seg.get("text", "").strip(),
+                "segments": [seg]
+            }
+            for seg in segments
+        ]
+
+    grouped_turns = []
+    current_turn = None
+
+    for seg in segments:
+        spk = seg.get("speaker", None)
+        text = seg.get("text", "").strip()
+        start = seg.get("start", 0.0)
+        end = seg.get("end", 0.0)
+
+        if current_turn is not None and current_turn["speaker"] == spk:
+            if text:
+                if current_turn["text"]:
+                    current_turn["text"] += " " + text
+                else:
+                    current_turn["text"] = text
+            current_turn["end"] = end
+            current_turn["segments"].append(seg)
+        else:
+            if current_turn is not None:
+                grouped_turns.append(current_turn)
+            current_turn = {
+                "speaker": spk,
+                "start": start,
+                "end": end,
+                "text": text,
+                "segments": [seg]
+            }
+
+    if current_turn is not None:
+        grouped_turns.append(current_turn)
+
+    return grouped_turns
+
 def generate_docx(job, output_path: Path, include_timestamps: bool = False) -> Path:
     """Generates a professional Word (.docx) document for the transcript."""
     from docx import Document
@@ -115,12 +167,13 @@ def generate_docx(job, output_path: Path, include_timestamps: bool = False) -> P
             pass
 
     if segments:
-        for seg in segments:
+        turns = group_segments_by_speaker(segments, is_diarized)
+        for turn in turns:
             p = doc.add_paragraph()
             p.paragraph_format.space_after = Pt(6)
             
             # Speaker Tag (ONLY if diarization was enabled and speaker exists)
-            spk_val = seg.get('speaker', None)
+            spk_val = turn.get('speaker', None)
             if is_diarized and spk_val:
                 spk_run = p.add_run(f"{spk_val}: ")
                 spk_run.bold = True
@@ -128,13 +181,13 @@ def generate_docx(job, output_path: Path, include_timestamps: bool = False) -> P
                 spk_run.font.size = Pt(11)
 
             if include_timestamps:
-                ts_str = f"[{format_timestamp(seg.get('start', 0))} - {format_timestamp(seg.get('end', 0))}] "
+                ts_str = f"[{format_timestamp(turn.get('start', 0))} - {format_timestamp(turn.get('end', 0))}] "
                 ts_run = p.add_run(ts_str)
                 ts_run.bold = True
                 ts_run.font.color.rgb = RGBColor(0x25, 0x63, 0xEB)
                 ts_run.font.size = Pt(10)
             
-            txt_run = p.add_run(seg.get("text", "").strip())
+            txt_run = p.add_run(turn.get("text", "").strip())
             txt_run.font.size = Pt(11)
             txt_run.font.color.rgb = RGBColor(0x1E, 0x29, 0x3B)
     else:
@@ -241,9 +294,10 @@ def generate_pdf(job, output_path: Path, include_timestamps: bool = False) -> Pa
             pass
 
     if segments:
-        for seg in segments:
-            txt_str = seg.get("text", "").strip()
-            spk_val = seg.get('speaker', None)
+        turns = group_segments_by_speaker(segments, is_diarized)
+        for turn in turns:
+            txt_str = turn.get("text", "").strip()
+            spk_val = turn.get('speaker', None)
             
             p_parts = []
             if is_diarized and spk_val:
@@ -251,7 +305,7 @@ def generate_pdf(job, output_path: Path, include_timestamps: bool = False) -> Pa
                 p_parts.append(f"<font color='{hex_color}'><b>{spk_val}:</b></font>")
                 
             if include_timestamps:
-                ts_str = f"[{format_timestamp(seg.get('start', 0))} - {format_timestamp(seg.get('end', 0))}]"
+                ts_str = f"[{format_timestamp(turn.get('start', 0))} - {format_timestamp(turn.get('end', 0))}]"
                 p_parts.append(f"<font color='#2563EB'><b>{ts_str}</b></font>")
                 
             p_parts.append(txt_str)
@@ -282,14 +336,15 @@ def generate_txt(job, output_path: Path, include_timestamps: bool = False) -> Pa
     ]
     
     if segments:
-        for seg in segments:
+        turns = group_segments_by_speaker(segments, is_diarized)
+        for turn in turns:
             parts = []
-            spk = seg.get('speaker', None)
+            spk = turn.get('speaker', None)
             if is_diarized and spk:
                 parts.append(f"{spk}:")
             if include_timestamps:
-                parts.append(f"[{format_timestamp(seg.get('start', 0))} - {format_timestamp(seg.get('end', 0))}]")
-            parts.append(seg.get('text', '').strip())
+                parts.append(f"[{format_timestamp(turn.get('start', 0))} - {format_timestamp(turn.get('end', 0))}]")
+            parts.append(turn.get('text', '').strip())
             lines.append(" ".join(parts))
     else:
         lines.append(job.full_text or "")

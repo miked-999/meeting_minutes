@@ -15,6 +15,7 @@ exports/*
 !exports/.gitkeep
 models_cache/*
 !models_cache/.gitkeep
+logs/*
 
 # Temporary Test Files
 test_meeting.wav

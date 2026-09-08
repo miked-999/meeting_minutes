@@ -24,18 +24,34 @@
 ## 🚀 Quick Start
 
 ### 1. Requirements
-- Python 3.9+
-- FFmpeg (`brew install ffmpeg`)
+- Python 3.9+ (or Conda)
+- FFmpeg (`brew install ffmpeg` on macOS, or included automatically via Conda/`static-ffmpeg`)
 
-### 2. Run the Application
+### 2. Environment Setup
+
+#### Option A: Virtualenv
 ```bash
-./venv/bin/python run_server.py
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+#### Option B: Conda Environments
+- **NVIDIA GPU**: `conda env create -f environment_gpu.yaml && conda activate meeting-minutes-gpu`
+- **CPU Only**: `conda env create -f environment_cpu.yaml && conda activate meeting-minutes-cpu`
+
+> [!NOTE]
+> For Windows environments, make sure to install the **[Microsoft Visual C++ Redistributable (x64)](https://aka.ms/vs/17/release/vc_redist.x64.exe)** to prevent `c10.dll` PyTorch loading errors. See [README_WIN.md](file:///Users/michael/meeting_minutes/README_WIN.md) for full Windows installation guidelines.
+
+### 3. Run the Application
+```bash
+python run_server.py
 ```
 Open your browser to: **`http://localhost:8000`**
 
-### 3. Stop the Application
+### 4. Stop the Application
 ```bash
-./stop.sh  # or ./venv/bin/python stop_server.py
+./stop.sh  # or python stop_server.py
 ```
 
 ---

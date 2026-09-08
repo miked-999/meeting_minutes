@@ -1,0 +1,42 @@
+FROM nvidia/cuda:12.1.1-runtime-ubuntu22.04
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    DEBIAN_FRONTEND=noninteractive \
+    MODELS_CACHE_DIR=/app/models_cache \
+    DATABASE_URL=sqlite:////app/data/meeting_minutes.db
+
+# Install Python 3.10 and system dependencies including FFmpeg
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.10 \
+    python3-pip \
+    python3.10-dev \
+    ffmpeg \
+    libsndfile1 \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -sf /usr/bin/python3.10 /usr/bin/python
+
+WORKDIR /app
+
+# Upgrade pip and install CUDA 12.1 PyTorch wheels first
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir torch torchaudio --extra-index-url https://download.pytorch.org/whl/cu121 && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Copy application source code
+COPY backend/ ./backend/
+COPY frontend/ ./frontend/
+COPY download_models.py .
+COPY run_server.py .
+COPY cleanup.py .
+COPY stop_server.py .
+
+# Create persistent storage directories
+RUN mkdir -p /app/models_cache /app/data /app/uploads /app/converted /app/exports /app/logs
+
+EXPOSE 8000
+
+CMD ["python", "run_server.py"]

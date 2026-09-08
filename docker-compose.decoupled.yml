@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # Web / REST API Frontend Container (Lightweight CPU)
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: meeting-transcribe-web:latest
+    container_name: meeting_transcribe_web
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - RETENTION_DAYS=7
+      - MODELS_CACHE_DIR=/app/models_cache
+      - DATABASE_URL=sqlite:////app/data/meeting_minutes.db
+      - SERVICE_ROLE=web
+    volumes:
+      - ./data:/app/data
+      - ./uploads:/app/uploads
+      - ./converted:/app/converted
+      - ./exports:/app/exports
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Worker Container (GPU Accelerated Inference)
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.gpu
+    image: meeting-transcribe-worker:latest
+    container_name: meeting_transcribe_worker
+    restart: unless-stopped
+    environment:
+      - MODELS_CACHE_DIR=/app/models_cache
+      - DATABASE_URL=sqlite:////app/data/meeting_minutes.db
+      - SERVICE_ROLE=worker
+    volumes:
+      - ./models_cache:/app/models_cache
+      - ./data:/app/data
+      - ./uploads:/app/uploads
+      - ./converted:/app/converted
+      - ./exports:/app/exports
+      - ./logs:/app/logs
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

@@ -17,12 +17,13 @@ This document provides complete, step-by-step instructions for installing, confi
 
 ## 🛠️ Step 1: Install System Prerequisites
 
-### 1.1 Install Python 3.9+ (64-bit)
+### 1.1 Install Python 3.9+ (64-bit) & Visual C++ Redistributable
 1. Download the latest Python 64-bit installer from [python.org/downloads/windows](https://www.python.org/downloads/windows/).
 2. Run the installer and **IMPORTANTLY** check the box:  
    ☑ **"Add Python 3.x to PATH"**
 3. Complete the installation wizard.
-4. Open PowerShell or Command Prompt and verify:
+4. **Important (PyTorch `c10.dll` Fix)**: Download and install the **[Microsoft Visual C++ Redistributable (x64)](https://aka.ms/vs/17/release/vc_redist.x64.exe)**. This provides required MSVC C++ runtime DLLs (`vcruntime140_1.dll`, `msvcp140.dll`) necessary for PyTorch's `c10.dll` C++ engine to load without errors.
+5. Open PowerShell or Command Prompt and verify:
    ```powershell
    python --version
    ```
@@ -39,18 +40,16 @@ This document provides complete, step-by-step instructions for installing, confi
 
 ---
 
-## 📥 Step 2: Code Setup & Virtual Environment
+## 📥 Step 2: Code Setup & Environment Creation
 
-1. Extract or clone the **Meeting Transcribe** codebase into your desired application folder (e.g., `C:\meeting_minutes`).
-2. Open PowerShell as Administrator and navigate to the project directory:
-   ```powershell
-   cd C:\meeting_minutes
-   ```
-3. Create a Python Virtual Environment:
+Extract or clone the **Meeting Transcribe** codebase into your desired application folder (e.g., `C:\meeting_minutes`), then open PowerShell as Administrator and choose either **Option A (Standard venv)** or **Option B (Conda Environment)**:
+
+### Option A: Standard Python Virtual Environment (`venv`)
+1. Create a Python Virtual Environment:
    ```powershell
    python -m venv venv
    ```
-4. Activate the virtual environment:
+2. Activate the virtual environment:
    - **PowerShell**:
      ```powershell
      .\venv\Scripts\Activate.ps1
@@ -60,11 +59,30 @@ This document provides complete, step-by-step instructions for installing, confi
      ```cmd
      venv\Scripts\activate.bat
      ```
-5. Upgrade `pip` and install all required Python libraries:
+3. Upgrade `pip` and install all required Python libraries:
    ```powershell
    pip install --upgrade pip
    pip install -r requirements.txt
    ```
+
+### Option B: Conda Environment Setup (Recommended for Windows GPU / CPU isolation)
+Two separate Conda environment configuration files are provided:
+- [`environment_gpu.yaml`](file:///Users/michael/meeting_minutes/environment_gpu.yaml) for machines with NVIDIA GPUs (CUDA 12.1 acceleration)
+- [`environment_cpu.yaml`](file:///Users/michael/meeting_minutes/environment_cpu.yaml) for CPU-only Windows systems
+
+1. **For NVIDIA GPU Server**:
+   ```powershell
+   conda env create -f environment_gpu.yaml
+   conda activate meeting-minutes-gpu
+   ```
+2. **For CPU-Only Windows Machine**:
+   ```powershell
+   conda env create -f environment_cpu.yaml
+   conda activate meeting-minutes-cpu
+   ```
+
+> [!NOTE]
+> Both `environment_gpu.yaml` and `environment_cpu.yaml` install PyTorch via official PyPI wheels (`https://download.pytorch.org/whl/cu121` or `cpu`) rather than Conda channels. This avoids OpenMP and MKL DLL conflicts on Windows.
 
 ---
 

@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  meeting-transcribe:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: meeting-transcribe:latest
+    container_name: meeting_transcribe_app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - RETENTION_DAYS=7
+      - MODELS_CACHE_DIR=/app/models_cache
+      - DATABASE_URL=sqlite:////app/data/meeting_minutes.db
+    volumes:
+      # Direct host folder mounts for persistent storage & air-gapped model weights
+      - ./models_cache:/app/models_cache
+      - ./data:/app/data
+      - ./uploads:/app/uploads
+      - ./converted:/app/converted
+      - ./exports:/app/exports
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+    # Uncomment block below if running on an NVIDIA GPU host:
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile.gpu
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]

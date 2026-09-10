@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: meeting-transcribe-worker
+  labels:
+    app: meeting-transcribe
+    component: worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: meeting-transcribe
+      component: worker
+  template:
+    metadata:
+      labels:
+        app: meeting-transcribe
+        component: worker
+    spec:
+      containers:
+        - name: worker
+          image: meeting-transcribe-worker:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: MODELS_CACHE_DIR
+              value: "/app/models_cache"
+            - name: DATABASE_URL
+              value: "sqlite:////app/data/meeting_minutes.db"
+            - name: SERVICE_ROLE
+              value: "worker"
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+              memory: "16Gi"
+              cpu: "4"
+            requests:
+              nvidia.com/gpu: 1
+              memory: "8Gi"
+              cpu: "2"
+          volumeMounts:
+            - name: models-cache-storage
+              mountPath: /app/models_cache
+            - name: data-storage
+              mountPath: /app/data
+            - name: uploads-storage
+              mountPath: /app/uploads
+            - name: exports-storage
+              mountPath: /app/exports
+            - name: logs-storage
+              mountPath: /app/logs
+      volumes:
+        - name: models-cache-storage
+          persistentVolumeClaim:
+            claimName: models-cache-pvc
+        - name: data-storage
+          persistentVolumeClaim:
+            claimName: data-pvc
+        - name: uploads-storage
+          persistentVolumeClaim:
+            claimName: uploads-pvc
+        - name: exports-storage
+          persistentVolumeClaim:
+            claimName: exports-pvc
+        - name: logs-storage
+          persistentVolumeClaim:
+            claimName: logs-pvc

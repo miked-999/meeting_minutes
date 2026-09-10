@@ -28,3 +28,5 @@
 {"timestamp": "2026-08-25T14:46:15.301635Z", "event_type": "JOB_CANCELLED", "job_id": "ee75db62-faf6-4c81-a532-04e22a7476a5", "filename": "user_a_meeting.mp3", "details": {"stage": "User requested cancellation"}}
 {"timestamp": "2026-09-08T07:30:55.111829Z", "event_type": "JOB_CANCELLED", "job_id": "f1e5c5e4-9c2a-4193-82d3-6b6bb2b7717d", "filename": "test_meeting.mp3", "details": {"stage": "User requested cancellation"}}
 {"timestamp": "2026-09-08T07:30:56.060489Z", "event_type": "JOB_CANCELLED", "job_id": "ebeff304-cbfc-4a14-8119-a10f524f3082", "filename": "user_a_meeting.mp3", "details": {"stage": "User requested cancellation"}}
+{"timestamp": "2026-09-10T11:59:10.105881Z", "event_type": "JOB_CANCELLED", "job_id": "79ab63b6-9a8f-4b58-a41a-a6404d52bb74", "filename": "test_meeting.mp3", "details": {"stage": "User requested cancellation"}}
+{"timestamp": "2026-09-10T11:59:10.971481Z", "event_type": "JOB_CANCELLED", "job_id": "4793322f-8fd2-4b7b-b813-77fccc40bcab", "filename": "user_a_meeting.mp3", "details": {"stage": "User requested cancellation"}}
